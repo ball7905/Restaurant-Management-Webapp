@@ -60,6 +60,7 @@ CREATE TABLE MONAN (
     Ten             NVARCHAR(100)       NOT NULL UNIQUE,
     PhanLoai        NVARCHAR(10)        NOT NULL CHECK (PhanLoai IN (N'Chay',N'Mặn')),
     MoTa            NVARCHAR(500),
+    ImageURL        VARCHAR(500)        NULL,
     DonGia          DECIMAL(12,0)       NOT NULL CHECK (DonGia > 0),
     DangPhucVu      BIT                 NOT NULL DEFAULT 1, -- 1: Còn, 0: Hết (Tạm thời)
     DangKinhDoanh   BIT                 NOT NULL DEFAULT 1  -- 1: Đang bán, 0: Ngừng kinh doanh

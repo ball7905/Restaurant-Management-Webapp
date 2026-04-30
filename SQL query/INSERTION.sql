@@ -79,22 +79,25 @@ INSERT INTO MONAN (Ten, PhanLoai, MoTa, DonGia, DangPhucVu) VALUES
 (N'Trà Đá', N'Chay', N'Mát lạnh', 5000, 1);
 
 -- 7. NGUYENLIEU
-INSERT INTO NGUYENLIEU (Ten, DonViTinh, SoLuong, DonGia) VALUES
-(N'Thịt Bò', N'Kg', 50.5, 250000),
-(N'Thịt Heo', N'Kg', 100.0, 120000),
-(N'Tôm Sú', N'Kg', 30.0, 300000),
-(N'Gạo Tám Thơm', N'Kg', 500.0, 20000),
-(N'Rau Muống', N'Kg', 20.0, 15000),
-(N'Cà Chua', N'Kg', 15.0, 25000),
-(N'Đậu Hũ', N'Miếng', 200.0, 3000),
-(N'Trứng Gà', N'Quả', 500.0, 3500),
-(N'Nước Mắm', N'Lít', 50.0, 40000),
-(N'Dầu Ăn', N'Lít', 100.0, 35000),
-(N'Bún Tươi', N'Kg', 40.0, 12000),
-(N'Bánh Phở', N'Kg', 40.0, 15000),
-(N'Hành Tây', N'Kg', 25.0, 20000),
-(N'Tỏi', N'Kg', 10.0, 50000),
-(N'Đường', N'Kg', 50.0, 18000);
+INSERT INTO NGUYENLIEU (Ten, DonViTinh, DonGia) VALUES
+(N'Thịt Bò', N'Kg', 250000),      -- ID 1
+(N'Thịt Heo', N'Kg', 120000),    -- ID 2
+(N'Tôm Sú', N'Kg', 300000),       -- ID 3
+(N'Gạo Tám Thơm', N'Kg', 20000), -- ID 4
+(N'Rau Muống', N'Kg', 15000),     -- ID 5
+(N'Cà Chua', N'Kg', 25000),       -- ID 6
+(N'Đậu Hũ', N'Miếng', 3000),     -- ID 7
+(N'Trứng Gà', N'Quả', 3500),     -- ID 8
+(N'Nước Mắm', N'Lít', 40000),     -- ID 9
+(N'Dầu Ăn', N'Lít', 35000),      -- ID 10
+(N'Bún Tươi', N'Kg', 12000),      -- ID 11
+(N'Bánh Phở', N'Kg', 15000),      -- ID 12
+(N'Hành Tây', N'Kg', 20000),      -- ID 13
+(N'Tỏi', N'Kg', 50000),           -- ID 14
+(N'Đường', N'Kg', 18000),         -- ID 15
+(N'Chén sứ trắng', N'Cái', 15000),-- ID 16
+(N'Đĩa sứ lớn', N'Cái', 25000),   -- ID 17
+(N'Muỗng inox', N'Cái', 5000);    -- ID 18
 
 -- 8. NHACUNGCAP
 INSERT INTO NHACUNGCAP (Ten, Email, DiaChi) VALUES
@@ -121,40 +124,50 @@ INSERT INTO SDT_NHACUNGCAP (ID_Nha_Cung_Cap, SDT) VALUES
 (11, '02811223344'), (12, '02855667788'), (13, '02899887766'), (14, '02811111111'), (15, '02822222222');
 
 -- 10. CUNGCAP (Nhập hàng)
-INSERT INTO CUNGCAP (ID_NhaCungCap, ID_NguyenLieu, ThoiGian, SoLuong, DonViTinh, DonGia) VALUES
-(1, 1, '2023-10-01', 100, N'Kg', 240000),
-(2, 5, '2023-10-02', 50, N'Kg', 14000),
-(3, 3, '2023-10-03', 20, N'Kg', 290000),
-(4, 4, '2023-10-04', 200, N'Kg', 19000),
-(5, 15, '2023-10-05', 100, N'Kg', 17000),
-(7, 2, '2023-10-06', 150, N'Kg', 115000),
-(9, 8, '2023-10-07', 1000, N'Quả', 3200),
-(1, 1, '2023-10-08', 50, N'Kg', 250000),
-(6, 6, '2023-10-09', 30, N'Kg', 24000),
-(5, 9, '2023-10-10', 100, N'Lít', 38000),
-(1, 12, '2023-10-11', 50, N'Kg', 14000),
-(2, 13, '2023-10-12', 40, N'Kg', 19000),
-(3, 3, '2023-10-13', 20, N'Kg', 300000),
-(4, 4, '2023-10-14', 100, N'Kg', 20000),
-(7, 2, '2023-10-15', 80, N'Kg', 120000);
+INSERT INTO CUNGCAP (ID_NhaCungCap, ID_NguyenLieu, ID_Kho, ThoiGian, SoLuong, DonViTinh, DonGia) VALUES
+(1, 1, 3, '2023-10-01', 100, N'Kg', 240000),   -- Nhà cung cấp 1 nhập Thịt Bò vào Kho Đông[cite: 2]
+(2, 5, 2, '2023-10-02', 50, N'Kg', 14000),     -- Nhà cung cấp 2 nhập Rau Muống vào Kho Mát[cite: 2]
+(3, 3, 3, '2023-10-03', 20, N'Kg', 290000),    -- Nhà cung cấp 3 nhập Tôm Sú vào Kho Đông[cite: 2]
+(4, 4, 1, '2023-10-04', 200, N'Kg', 19000),    -- Nhà cung cấp 4 nhập Gạo vào Kho Khô[cite: 2]
+(5, 15, 1, '2023-10-05', 100, N'Kg', 17000),   -- Nhà cung cấp 5 nhập Đường vào Kho Khô[cite: 2]
+(7, 2, 3, '2023-10-06', 150, N'Kg', 115000),   -- Nhà cung cấp 7 nhập Thịt Heo vào Kho Đông[cite: 2]
+(9, 8, 1, '2023-10-07', 1000, N'Quả', 3200),   -- Nhà cung cấp 9 nhập Trứng vào Kho Khô[cite: 2]
+(1, 1, 3, '2023-10-08', 50, N'Kg', 250000),    -- Nhập thêm Thịt Bò[cite: 2]
+(6, 6, 2, '2023-10-09', 30, N'Kg', 24000),     -- Nhà cung cấp 6 nhập Cà Chua vào Kho Mát[cite: 2]
+(5, 9, 1, '2023-10-10', 100, N'Lít', 38000),   -- Nhà cung cấp 5 nhập Nước Mắm vào Kho Khô[cite: 2]
+(1, 12, 2, '2023-10-11', 50, N'Kg', 14000),    -- Nhà cung cấp 1 nhập Bánh Phở vào Kho Mát[cite: 2]
+(2, 13, 1, '2023-10-12', 40, N'Kg', 19000),    -- Nhà cung cấp 2 nhập Hành Tây vào Kho Khô[cite: 2]
+(3, 3, 3, '2023-10-13', 20, N'Kg', 300000),    -- Nhập thêm Tôm Sú[cite: 2]
+(4, 4, 1, '2023-10-14', 100, N'Kg', 20000),    -- Nhập thêm Gạo[cite: 2]
+(7, 2, 3, '2023-10-15', 80, N'Kg', 120000);    -- Nhập thêm Thịt Heo[cite: 2]
 
 -- 11. KIEMKE (Lưu ý: SoLuongHeThong lấy ngẫu nhiên giả lập)
-INSERT INTO KIEMKE (ID_QuanLyKho, ID_NguyenLieu, ThoiGian, SoLuongHeThong, SoLuongThucTe, TinhTrang, DaXuLy) VALUES
-(7, 1, '2023-10-30', 50.5, 50.0, N'Hao hụt tự nhiên', 1),
-(7, 2, '2023-10-30', 100.0, 98.0, N'Hư hỏng nhẹ', 1),
-(7, 3, '2023-10-30', 30.0, 30.0, N'Đủ', 1),
-(7, 4, '2023-10-30', 500.0, 495.0, N'Chuột cắn bao bì', 0),
-(7, 5, '2023-10-30', 20.0, 15.0, N'Héo, bỏ', 1),
-(7, 6, '2023-10-30', 15.0, 15.0, N'Đủ', 1),
-(7, 7, '2023-10-30', 200.0, 200.0, N'Đủ', 1),
-(7, 8, '2023-10-30', 500.0, 490.0, N'Vỡ khi vận chuyển', 1),
-(7, 9, '2023-10-30', 50.0, 50.0, N'Đủ', 1),
-(7, 10, '2023-10-30', 100.0, 99.0, N'Đổ', 1),
-(7, 11, '2023-10-30', 40.0, 40.0, N'Đủ', 1),
-(7, 12, '2023-10-30', 40.0, 38.0, N'Hết hạn', 0),
-(7, 13, '2023-10-30', 25.0, 25.0, N'Đủ', 1),
-(7, 14, '2023-10-30', 10.0, 9.5, N'Hao hụt', 1),
-(7, 15, '2023-10-30', 50.0, 50.0, N'Đủ', 1);
+INSERT INTO KIEMKE (ID_QuanLyKho, ID_Kho, ID_NguyenLieu, ThoiGian, SoLuongHeThong, SoLuongThucTe, TinhTrang, DaXuLy) VALUES
+-- Nhóm Kho Đông (ID_Kho = 3)
+(7, 3, 1, '2023-10-30', 50.5, 50.0, N'Hao hụt tự nhiên', 1),  -- Thịt Bò
+(7, 3, 2, '2023-10-30', 100.0, 98.0, N'Hư hỏng nhẹ', 1),     -- Thịt Heo
+(7, 3, 3, '2023-10-30', 30.0, 30.0, N'Đủ', 1),              -- Tôm Sú
+
+-- Nhóm Kho Khô (ID_Kho = 1)
+(7, 1, 4, '2023-10-30', 500.0, 495.0, N'Chuột cắn bao bì', 0), -- Gạo Tám Thơm
+(7, 1, 8, '2023-10-30', 500.0, 490.0, N'Vỡ khi vận chuyển', 1),-- Trứng Gà
+(7, 1, 9, '2023-10-30', 50.0, 50.0, N'Đủ', 1),               -- Nước Mắm
+(7, 1, 10, '2023-10-30', 100.0, 99.0, N'Đổ', 1),              -- Dầu Ăn
+(7, 1, 13, '2023-10-30', 25.0, 25.0, N'Đủ', 1),               -- Hành Tây
+(7, 1, 14, '2023-10-30', 10.0, 9.5, N'Hao hụt', 1),           -- Tỏi
+(7, 1, 15, '2023-10-30', 50.0, 50.0, N'Đủ', 1),               -- Đường
+
+-- Nhóm Kho Mát (ID_Kho = 2)
+(7, 2, 5, '2023-10-30', 20.0, 15.0, N'Héo, bỏ', 1),           -- Rau Muống
+(7, 2, 6, '2023-10-30', 15.0, 15.0, N'Đủ', 1),               -- Cà Chua
+(7, 2, 7, '2023-10-30', 200.0, 200.0, N'Đủ', 1),              -- Đậu Hũ
+(7, 2, 11, '2023-10-30', 40.0, 40.0, N'Đủ', 1),              -- Bún Tươi
+(7, 2, 12, '2023-10-30', 40.0, 38.0, N'Hết hạn', 0),          -- Bánh Phở
+
+-- Nhóm Kho Công Cụ (ID_Kho = 4)
+(7, 4, 16, '2023-10-30', 200.0, 195.0, N'Bể vỡ trong quá trình rửa', 1), -- Chén sứ trắng
+(7, 4, 17, '2023-10-30', 150.0, 150.0, N'Đủ', 1),                      -- Đĩa sứ lớn
+(7, 4, 18, '2023-10-30', 300.0, 298.0, N'Thất thoát chưa rõ lý do', 0); -- Muỗng inox
 
 -- 12. DATBAN
 INSERT INTO DATBAN (SoLuongKhach, ThoiGianDat, TrangThai, GhiChu, ID_LeTan, SDT_Khach, ID_Ban) VALUES
@@ -265,34 +278,52 @@ INSERT INTO BAOCAODOANHTHU (ThoiGianLap, LoaiBaoCao, Ky, Nam, TongDoanhThu, Tong
 ('2023-02-28', N'Tháng', 2, 2023, 130000000, 65000000),
 ('2023-04-30', N'Tháng', 4, 2023, 140000000, 70000000);
 
+-- 19. KHO
+-- Thêm các kho lưu trữ
+INSERT INTO KHO (Ten, LoaiKho, TrangThai, ViTri) VALUES
+(N'Kho Khô Trung Tâm', N'Kho khô', N'Bình thường', N'Tầng hầm 1'), -- ID 1
+(N'Kho Lạnh Thực Phẩm', N'Kho mát', N'Bình thường', N'Khu vực bếp'), -- ID 2
+(N'Kho Đông Hải Sản', N'Kho đông', N'Cần bảo trì', N'Khu vực sau nhà'), -- ID 3
+(N'Kho Công Cụ & Chén Bát', N'Kho công cụ', N'Bình thường', N'Tầng 1'); -- ID 4
+
+-- 20. CHUA
+-- Phân bổ nguyên liệu vào các kho (Mapping ID_Kho và ID_NguyenLieu)
+INSERT INTO CHUA (ID_Kho, ID_NguyenLieu, SoLuong) VALUES
+-- Kho Khô (ID 1)
+(1, 4, 500.0),  -- Gạo
+(1, 15, 50.0),  -- Đường
+(1, 10, 100.0), -- Dầu ăn
+-- Kho Mát (ID 2)
+(2, 5, 20.0),   -- Rau Muống
+(2, 6, 15.0),   -- Cà Chua
+(2, 7, 200.0),  -- Đậu Hũ
+-- Kho Đông (ID 3)
+(3, 1, 50.5),   -- Thịt Bò
+(3, 2, 100.0),  -- Thịt Heo
+(3, 3, 30.0),   -- Tôm Sú
+-- Kho Công Cụ (ID 4)
+(4, 16, 200.0), -- Chén sứ
+(4, 17, 150.0), -- Đĩa sứ
+(4, 18, 300.0); -- Muỗng inox
+
 --INSERT DATA CHO table NGUYENLIEU_MONAN
 INSERT INTO NGUYENLIEU_MONAN (ID_MonAn, ID_NguyenLieu, SoLuongNgLieuDung, DonViTinh) VALUES
--- 1. Phở Bò (5000) → cần Bò, Bánh phở, Rau sống, Gia vị
-(5000, 10001, 0.25,  N'kg'),     -- Thịt bò: 250g/tô (hiện có 50kg → đủ)
-(5000, 10004, 0.20,  N'kg'),     -- Bánh phở: 200g/tô (có 30kg → đủ)
-(5000, 10003, 0.05,  N'kg'),     -- Rau sống: 50g/tô (có 40kg → đủ)
-(5000, 10006, 0.01,  N'kg'),     -- Gia vị: 10g/tô (có 20kg → đủ)
-
--- 2. Bún Chả (5001) → cần Thịt heo, Bún, Rau sống
-(5001, 10002, 0.20,  N'kg'),     -- Thịt heo: 200g/phần (có 70kg → đủ)
-(5001, 10005, 0.20,  N'kg'),     -- Bún: 200g/phần (có 60kg → đủ)
-(5001, 10003, 0.10,  N'kg'),     -- Rau sống: 100g/phần
-
--- 3. Gỏi Cuốn (5002) → cần Bánh tráng, Thịt heo, Tôm, Rau sống, Bún
-(5002, 10002, 0.10,  N'kg'),     -- Thịt heo: 100g/phần
-(5002, 10005, 0.10,  N'kg'),     -- Bún
-(5002, 10003, 0.15,  N'kg'),     -- Rau sống: 150g/phần (có 40kg → đủ)
-
--- 4. Bánh Mì (5003) → cần Bánh mì, Pate, Thịt heo, Rau sống, Dưa leo (giả sử Dưa leo là Rau sống)
-(5003, 10002, 0.08,  N'kg'),     -- Thịt heo: 80g/ổ
-(5003, 10003, 0.05,  N'kg'),     -- Rau sống + dưa leo
-
--- 5. Cơm Tấm (5007) → cần Gạo, Thịt heo, Trứng (giả sử dùng Trứng gà = ID 10007 Cà pháo? → đổi thành Rau sống cho hợp lý)
--- Thực tế nên thêm nguyên liệu "Trứng" sau, tạm dùng Rau sống để demo
-(5007, 10004, 0.20,  N'kg'),     -- Gạo → nhưng bảng nguyên liệu không có Gạo → dùng Bánh phở thay tạm để demo
--- → Thay bằng Bún để có ID
-(5007, 10002, 0.15,  N'kg'),     -- Thịt heo
-(5007, 10005, 0.20,  N'kg'),     -- Bún (thay cho cơm tấm)
-
--- 9. Nước Ép Trái Cây (5010) → cần Trái cây
-(5010, 10008, 0.5,   N'kg');     -- Trái cây: 500g/ly (có 80kg → đủ)
+-- 1. Phở Bò Đặc Biệt (ID 1)
+(1, 1, 0.25, N'Kg'),   -- Thịt bò
+(1, 12, 0.20, N'Kg'),  -- Bánh phở
+(1, 13, 0.05, N'Kg'),  -- Hành tây
+-- 2. Cơm Tấm Sườn Bì (ID 2)
+(2, 2, 0.15, N'Kg'),   -- Thịt heo (Sườn)
+(2, 4, 0.20, N'Kg'),   -- Gạo
+(2, 9, 0.02, N'Lít'),  -- Nước mắm
+-- 3. Bún Bò Huế (ID 3)
+(3, 1, 0.10, N'Kg'),   -- Thịt bò
+(3, 11, 0.20, N'Kg'),  -- Bún tươi
+-- 4. Gỏi Cuốn Tôm Thịt (ID 4)
+(4, 3, 0.10, N'Kg'),   -- Tôm
+(4, 2, 0.05, N'Kg'),   -- Thịt heo
+-- 8. Đậu Hũ Sốt Cà (ID 8)
+(8, 7, 2.0, N'Miếng'), -- Đậu hũ
+(8, 6, 0.10, N'Kg'),   -- Cà chua
+-- 15. Trà Đá (ID 15)
+(15, 15, 0.01, N'Kg'); -- Đường (pha trà)

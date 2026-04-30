@@ -69,7 +69,7 @@ CREATE TABLE NGUYENLIEU (
     ID              INT IDENTITY(1,1)   PRIMARY KEY,
     Ten             NVARCHAR(500)       NOT NULL UNIQUE,
     DonViTinh       NVARCHAR(50)        NOT NULL, -- kg, cái, lít,...
-    SoLuong         DECIMAL(12,2)       NOT NULL CHECK (SoLuong >= 0),
+    --SoLuong         DECIMAL(12,2)       NOT NULL CHECK (SoLuong >= 0),
     DonGia          DECIMAL(12,2)       NOT NULL CHECK (DonGia >= 0)
 );
 
@@ -93,6 +93,7 @@ CREATE TABLE CUNGCAP (
     ID              INT IDENTITY(1,1)       PRIMARY KEY,
     ID_NhaCungCap   INT                     NOT NULL,
     ID_NguyenLieu   INT                     NOT NULL,
+    ID_Kho          INT                     NOT NULL,
     ThoiGian        DATETIME2               NOT NULL DEFAULT SYSUTCDATETIME(),
     SoLuong         DECIMAL(12,2)           NOT NULL CHECK (SoLuong >= 0),
     DonViTinh       NVARCHAR(20)            NOT NULL,
@@ -100,11 +101,12 @@ CREATE TABLE CUNGCAP (
     TongTien        AS (SoLuong * DonGia)   PERSISTED
 );
 
--- Relationship: QUANLYKHO - NGUYENLIEU
+-- Relationship: QUANLYKHO - KHO
 CREATE TABLE KIEMKE (
     ID              INT IDENTITY(1,1)   PRIMARY KEY,
     ID_QuanLyKho    INT                 NOT NULL,
-    ID_NguyenLieu   INT                 NOT NULL,
+    ID_Kho          INT                 NOT NULL,
+    ID_NguyenLieu   INT                NOT NULL,
     ThoiGian        DATETIME2           NOT NULL DEFAULT SYSUTCDATETIME(),
 
     SoLuongHeThong  DECIMAL(12,2)       NOT NULL,
@@ -113,6 +115,15 @@ CREATE TABLE KIEMKE (
     
     TinhTrang       NVARCHAR(200)       NULL, -- Ghi chú: "Hư hỏng", "Hết hạn", "Mất"...
     DaXuLy          BIT                 DEFAULT 0 -- 0: Chưa xử lý, 1: Đã cân bằng kho/Đã nhập thêm
+);
+
+-- Relationship: KHO - NGUYENLIEU
+CREATE TABLE CHUA (
+    ID_Kho          INT                 NOT NULL,
+    ID_NguyenLieu   INT                 NOT NULL,
+    SoLuong         DECIMAL(12,2)       NOT NULL DEFAULT 0 CHECK (SoLuong >= 0),
+    
+    PRIMARY KEY (ID_Kho, ID_NguyenLieu)
 );
 
 -- Cần có Procedure để tự động tạo báo cáo doanh thu định kỳ
@@ -133,6 +144,7 @@ CREATE TABLE BAOCAODOANHTHU (
     
     CONSTRAINT UQ_KyBaoCao UNIQUE (LoaiBaoCao, Ky, Nam)
 );
+
 /* Child tables to NHANVIEN */
 
 CREATE TABLE QUANLY (
@@ -163,6 +175,16 @@ CREATE TABLE QUANLYKHO (
     ID              INT                 PRIMARY KEY,
     NhomNguyenLieu  NVARCHAR(20)        NULL
     -- Đồ khô, Nước, Thịt, Rượu, Rau Củ,...
+);
+
+CREATE TABLE KHO (
+    ID              INT IDENTITY(1,1)   PRIMARY KEY,
+    Ten             NVARCHAR(200)       NOT NULL,
+    LoaiKho         NVARCHAR(50)        NOT NULL 
+                    CHECK (LoaiKho IN (N'Kho khô', N'Kho mát', N'Kho đông', N'Kho công cụ')),
+    TrangThai       NVARCHAR(50)        NOT NULL DEFAULT N'Bình thường'
+                    CHECK (TrangThai IN (N'Đang bảo trì', N'Bình thường', N'Cần bảo trì')),
+    ViTri           NVARCHAR(300)
 );
 
 /* Operation */
@@ -250,10 +272,10 @@ CREATE TABLE CAPNHAT_MONAN (
 
 -- Tạo bảng NGUYENLIEU_MONAN -------------------
 -- Dùng để lưu nguyên liệu cần dùng cho mỗi món ăn (công thức chế biến)
---CREATE TABLE NGUYENLIEU_MONAN (
---    ID                  INT IDENTITY(1,1)   PRIMARY KEY,
---    ID_MonAN            INT             NOT NULL,
---    ID_NguyenLieu       INT             NOT NULL,
---    SoLuongNgLieuDung   DECIMAL(12,0)   NOT NULL CHECK (SoLuongNgLieuDung > 0),
---    DonViTinh           NVARCHAR(500)   NOT NULL
---);
+CREATE TABLE NGUYENLIEU_MONAN (
+    ID                  INT IDENTITY(1,1)   PRIMARY KEY,
+    ID_MonAN            INT             NOT NULL,
+    ID_NguyenLieu       INT             NOT NULL,
+    SoLuongNgLieuDung   DECIMAL(12,2)   NOT NULL CHECK (SoLuongNgLieuDung > 0),
+    DonViTinh           NVARCHAR(500)   NOT NULL
+);
