@@ -21,7 +21,7 @@ export default function LandingPage() {
       </Link>
 
       {/* Small footer */}
-      <p>©2025 Group_4_L08 Hệ thống quản lý nhà hàng</p>
+      <p>©2026 Group_13_L01 Hệ thống quản lý nhà hàng</p>
     </div>
   );
 }
