@@ -9,11 +9,16 @@ export default function ManageMenu() {
 
   const [editing, setEditing] = useState(null);
 
+  // --- SEARCH STATE ---
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchField, setSearchField] = useState("all"); // 'all' | 'name' | 'category'
+
   const [form, setForm] = useState({
     name: "",
     price: "",
     category: "Mặn", // Mặc định là Mặn để khớp Constraint
     description: "",
+    url: "",          // Đường dẫn hình ảnh món ăn (lấy từ DB)
   });
 
   // Tự động ẩn thông báo sau 5s
@@ -56,6 +61,20 @@ export default function ManageMenu() {
     loadMenu();
   }, []);
 
+  // --- FILTERED MENU ---
+  const filteredMenu = menu.filter((item) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.trim().toLowerCase();
+    const name = (item.Ten || item.name || "").toLowerCase();
+    const category = (item.PhanLoai || item.category || "").toLowerCase();
+
+    if (searchField === "name") return name.includes(q);
+    if (searchField === "category") return category.includes(q);
+    
+    // 'all': tìm trong cả tên và phân loại
+    return name.includes(q) || category.includes(q);
+  });
+
   // Create / Update menu item
   async function handleSubmit(e) {
     e.preventDefault();
@@ -93,9 +112,8 @@ export default function ManageMenu() {
       setSuccess(data.message);
       await loadMenu();
 
-      // Chỉ reset form khi thêm mới
       if (!editing) {
-        setForm({ name: "", price: "", category: "Mặn", description: "" });
+        setForm({ name: "", price: "", category: "Mặn", description: "", url: "" });
       }
       setEditing(null);
       window.scrollTo(0, 0);
@@ -139,7 +157,6 @@ export default function ManageMenu() {
         Quản Lý Thực Đơn
       </h2>
 
-      {/* Thông báo Lỗi / Thành công */}
       {error && <div style={styles.errorMsg}>⚠️ {error}</div>}
       {success && <div style={styles.successMsg}>✅ {success}</div>}
 
@@ -153,14 +170,60 @@ export default function ManageMenu() {
       >
         {/* LEFT: MENU TABLE */}
         <div style={{ flex: 2, minWidth: "60%" }}>
+          
+          {/* ===== SEARCH BAR (Format từ ManageEmployees) ===== */}
+          <div style={styles.searchBar}>
+            <select
+              value={searchField}
+              onChange={(e) => setSearchField(e.target.value)}
+              style={styles.searchSelect}
+            >
+              <option value="all">Tất cả</option>
+              <option value="name">Tên món</option>
+              <option value="category">Phân loại</option>
+            </select>
+
+            <div style={styles.searchInputWrapper}>
+              <span style={styles.searchIcon}>🔍</span>
+              <input
+                type="text"
+                placeholder={
+                  searchField === "all"
+                    ? "Tìm theo tên món hoặc phân loại..."
+                    : searchField === "name"
+                    ? "Nhập tên món ăn..."
+                    : "Nhập phân loại (Mặn/Chay)..."
+                }
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={styles.searchInput}
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  style={styles.clearBtn}
+                  title="Xóa tìm kiếm"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            <span style={styles.resultCount}>
+              {filteredMenu.length}/{menu.length} món ăn
+            </span>
+          </div>
+          {/* ===== END SEARCH BAR ===== */}
+
           <div className="table-wrapper">
             <table className="table">
               <thead>
                 <tr>
-                  <th style={{ width: "30%" }}>Tên Món</th>
-                  <th style={{ width: "20%" }}>Đơn Giá</th>
-                  <th style={{ width: "20%" }}>Phân Loại</th>
-                  <th style={{ width: "30%", textAlign: "center" }}>
+                  <th style={{ width: "25%" }}>Tên Món</th>
+                  <th style={{ width: "15%" }}>Đơn Giá</th>
+                  <th style={{ width: "15%" }}>Phân Loại</th>
+                  <th style={{ width: "15%", textAlign: "center" }}>Hình Ảnh</th>
+                  <th style={{ width: "20%", textAlign: "center" }}>
                     Hành Động
                   </th>
                 </tr>
@@ -169,24 +232,60 @@ export default function ManageMenu() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td
-                      colSpan="4"
-                      style={{ textAlign: "center", padding: "20px" }}
-                    >
+                    <td colSpan="4" style={{ textAlign: "center", padding: "20px" }}>
                       Đang tải...
                     </td>
                   </tr>
+                ) : filteredMenu.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan="4"
+                      style={{
+                        textAlign: "center",
+                        padding: "30px",
+                        color: "#999",
+                        fontStyle: "italic",
+                      }}
+                    >
+                      {searchQuery
+                        ? `Không tìm thấy món ăn phù hợp với "${searchQuery}"`
+                        : "Chưa có món ăn nào"}
+                    </td>
+                  </tr>
                 ) : (
-                  menu.map((item) => (
+                  filteredMenu.map((item) => (
                     <tr key={item.ID || item.id}>
-                      <td>{item.Ten || item.name}</td>
+                      <td>
+                        {/* Highlight tên món */}
+                        {searchField === "name" || searchField === "all"
+                          ? highlightText(item.Ten || item.name, searchQuery)
+                          : item.Ten || item.name}
+                      </td>
                       <td>
                         {new Intl.NumberFormat("vi-VN", {
                           style: "currency",
                           currency: "VND",
                         }).format(item.DonGia || item.price)}
                       </td>
-                      <td>{item.PhanLoai || item.category}</td>
+                      <td>
+                        {/* Highlight phân loại */}
+                        {searchField === "category" || searchField === "all"
+                          ? highlightText(item.PhanLoai || item.category, searchQuery)
+                          : item.PhanLoai || item.category}
+                      </td>
+                      <td style={{ textAlign: "center" }}>
+                        {/* Hiển thị thumbnail ảnh món ăn từ trường url trong DB */}
+                        {(item.HinhAnh || item.url) ? (
+                          <img
+                            src={item.HinhAnh || item.url}
+                            alt={item.Ten || item.name}
+                            style={imgStyles.thumbnail}
+                            onError={(e) => { e.target.style.display = "none"; }}
+                          />
+                        ) : (
+                          <span style={imgStyles.noImg}>Chưa có ảnh</span>
+                        )}
+                      </td>
                       <td style={{ textAlign: "center" }}>
                         <button
                           className="btn"
@@ -241,7 +340,7 @@ export default function ManageMenu() {
               color: "#5a381e",
             }}
           >
-            {editing ? `Cập Nhật (ID: ${editing.ID})` : "Thêm Món Mới"}
+            {editing ? `Cập Nhật (ID: ${editing.ID || editing.id})` : "Thêm Món Mới"}
           </h3>
 
           <form
@@ -304,7 +403,28 @@ export default function ManageMenu() {
               />
             </div>
 
-            {/* SAVE BUTTON */}
+            <div>
+              <label style={styles.label}>Hình ảnh (URL)</label>
+              <input
+                placeholder="https://example.com/anh-mon-an.jpg"
+                value={form.url}
+                onChange={(e) => setForm({ ...form, url: e.target.value })}
+                style={styles.input}
+              />
+              {/* Preview ảnh trực tiếp khi user nhập URL */}
+              {form.url && (
+                <div style={imgStyles.previewWrap}>
+                  <img
+                    src={form.url}
+                    alt="Preview"
+                    style={imgStyles.preview}
+                    onError={(e) => { e.target.style.display = "none"; }}
+                  />
+                  <p style={imgStyles.previewLabel}>Preview ảnh</p>
+                </div>
+              )}
+            </div>
+
             <button
               className="btn"
               style={{
@@ -317,7 +437,6 @@ export default function ManageMenu() {
               {editing ? "Lưu Thay Đổi" : "Thêm Món"}
             </button>
 
-            {/* CANCEL BUTTON */}
             {editing && (
               <button
                 type="button"
@@ -334,6 +453,7 @@ export default function ManageMenu() {
                     price: "",
                     category: "Mặn",
                     description: "",
+                    url: "",
                   });
                   setError("");
                   setSuccess("");
@@ -348,6 +468,66 @@ export default function ManageMenu() {
     </DashboardLayout>
   );
 }
+
+// --- HELPER: Highlight từ khóa trong text (Giống ManageEmployees) ---
+function highlightText(text, query) {
+  if (!query || !text) return text;
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return text;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark style={{ background: "#fff176", borderRadius: "2px", padding: "0 1px" }}>
+        {text.slice(idx, idx + query.length)}
+      </mark>
+      {text.slice(idx + query.length)}
+    </>
+  );
+}
+
+// --- IMAGE STYLES ---
+const imgStyles = {
+  // Thumbnail nhỏ hiển thị trong bảng danh sách
+  thumbnail: {
+    width: "60px",
+    height: "60px",
+    objectFit: "cover",
+    borderRadius: "6px",
+    border: "1px solid #e0d6cc",
+    display: "block",
+    margin: "0 auto",
+  },
+  // Text thay thế khi món chưa có ảnh
+  noImg: {
+    color: "#bbb",
+    fontSize: "11px",
+    fontStyle: "italic",
+  },
+  // Khung preview ảnh trong form nhập URL
+  previewWrap: {
+    marginTop: "8px",
+    textAlign: "center",
+    border: "1px dashed #c4b9a6",
+    borderRadius: "8px",
+    padding: "8px",
+    background: "#fdf6ef",
+  },
+  // Ảnh preview trong form
+  preview: {
+    width: "100%",
+    maxHeight: "180px",
+    objectFit: "cover",
+    borderRadius: "6px",
+    display: "block",
+  },
+  // Caption dưới preview
+  previewLabel: {
+    margin: "6px 0 0",
+    fontSize: "11px",
+    color: "#888",
+    fontStyle: "italic",
+  },
+};
 
 const styles = {
   label: {
@@ -381,5 +561,70 @@ const styles = {
     borderRadius: "8px",
     border: "1px solid #a5d6a7",
     fontWeight: "bold",
+  },
+  // --- SEARCH STYLES (Copy từ ManageEmployees) ---
+  searchBar: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    background: "white",
+    padding: "12px 16px",
+    borderRadius: "8px",
+    border: "1px solid #e0d6cc",
+    marginBottom: "12px",
+    boxShadow: "0 2px 6px rgba(90,56,30,0.07)",
+    flexWrap: "wrap",
+  },
+  searchSelect: {
+    padding: "8px 10px",
+    borderRadius: "6px",
+    border: "1px solid #c4b9a6",
+    fontSize: "13px",
+    fontWeight: "bold",
+    color: "#5a381e",
+    background: "#fdf6ef",
+    cursor: "pointer",
+    outline: "none",
+    minWidth: "110px",
+  },
+  searchInputWrapper: {
+    flex: 1,
+    minWidth: "200px",
+    position: "relative",
+    display: "flex",
+    alignItems: "center",
+  },
+  searchIcon: {
+    position: "absolute",
+    left: "10px",
+    fontSize: "14px",
+    pointerEvents: "none",
+  },
+  searchInput: {
+    width: "100%",
+    padding: "8px 32px 8px 32px",
+    borderRadius: "6px",
+    border: "1px solid #c4b9a6",
+    fontSize: "14px",
+    outline: "none",
+    transition: "border-color 0.2s",
+  },
+  clearBtn: {
+    position: "absolute",
+    right: "8px",
+    background: "none",
+    border: "none",
+    cursor: "pointer",
+    color: "#999",
+    fontSize: "12px",
+    padding: "2px 4px",
+    borderRadius: "50%",
+    lineHeight: 1,
+  },
+  resultCount: {
+    fontSize: "12px",
+    color: "#888",
+    whiteSpace: "nowrap",
+    fontStyle: "italic",
   },
 };

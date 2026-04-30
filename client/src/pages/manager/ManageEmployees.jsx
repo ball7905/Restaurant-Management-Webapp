@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-// Đảm bảo đường dẫn import đúng
 import DashboardLayout from "../../components/DashboardLayout.jsx";
 
 export default function ManageEmployees() {
@@ -11,6 +10,10 @@ export default function ManageEmployees() {
   const [editing, setEditing] = useState(null);
   const [phones, setPhones] = useState([]);
   const [newPhone, setNewPhone] = useState("");
+
+  // --- SEARCH STATE ---
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchField, setSearchField] = useState("all"); // 'all' | 'name' | 'cccd' | 'phone'
 
   const [form, setForm] = useState({
     cccd: "",
@@ -84,6 +87,21 @@ export default function ManageEmployees() {
   useEffect(() => {
     loadEmployees();
   }, []);
+
+  // --- FILTERED EMPLOYEES ---
+  const filteredEmployees = employees.filter((emp) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.trim().toLowerCase();
+    if (searchField === "name") return emp.name?.toLowerCase().includes(q);
+    if (searchField === "cccd") return emp.cccd?.toLowerCase().includes(q);
+    if (searchField === "phone") return emp.phone?.toLowerCase().includes(q);
+    // 'all': tìm trong cả 3 trường
+    return (
+      emp.name?.toLowerCase().includes(q) ||
+      emp.cccd?.toLowerCase().includes(q) ||
+      emp.phone?.toLowerCase().includes(q)
+    );
+  });
 
   async function handleAddPhone() {
     if (!newPhone.trim()) return;
@@ -246,7 +264,6 @@ export default function ManageEmployees() {
           </div>
         );
       case "Đầu bếp":
-        // [ĐÃ SỬA] Đưa ID Giám sát ra ngoài dùng chung, ở đây không cần nữa
         return null;
       case "Bếp trưởng":
         return (
@@ -328,6 +345,57 @@ export default function ManageEmployees() {
       >
         {/* LEFT: TABLE */}
         <div style={{ flex: 2, minWidth: "60%" }}>
+
+          {/* ===== SEARCH BAR ===== */}
+          <div style={styles.searchBar}>
+            {/* Dropdown chọn trường tìm kiếm */}
+            <select
+              value={searchField}
+              onChange={(e) => setSearchField(e.target.value)}
+              style={styles.searchSelect}
+            >
+              <option value="all">Tất cả</option>
+              <option value="name">Họ tên</option>
+              <option value="cccd">CCCD</option>
+              <option value="phone">SĐT</option>
+            </select>
+
+            {/* Ô nhập từ khóa */}
+            <div style={styles.searchInputWrapper}>
+              <span style={styles.searchIcon}>🔍</span>
+              <input
+                type="text"
+                placeholder={
+                  searchField === "all"
+                    ? "Tìm theo tên, CCCD hoặc SĐT..."
+                    : searchField === "name"
+                    ? "Nhập tên nhân viên..."
+                    : searchField === "cccd"
+                    ? "Nhập số CCCD..."
+                    : "Nhập số điện thoại..."
+                }
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={styles.searchInput}
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  style={styles.clearBtn}
+                  title="Xóa tìm kiếm"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Kết quả đếm */}
+            <span style={styles.resultCount}>
+              {filteredEmployees.length}/{employees.length} nhân viên
+            </span>
+          </div>
+          {/* ===== END SEARCH BAR ===== */}
+
           <div className="table-wrapper">
             <table className="table">
               <thead>
@@ -350,14 +418,45 @@ export default function ManageEmployees() {
                       Đang tải...
                     </td>
                   </tr>
+                ) : filteredEmployees.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan="6"
+                      style={{
+                        textAlign: "center",
+                        padding: "30px",
+                        color: "#999",
+                        fontStyle: "italic",
+                      }}
+                    >
+                      {searchQuery
+                        ? `Không tìm thấy nhân viên phù hợp với "${searchQuery}"`
+                        : "Chưa có nhân viên nào"}
+                    </td>
+                  </tr>
                 ) : (
-                  employees.map((emp) => (
+                  filteredEmployees.map((emp) => (
                     <tr key={emp.id}>
                       <td>{emp.id}</td>
-                      <td>{emp.cccd}</td>
-                      <td>{emp.name}</td>
+                      <td>
+                        {/* Highlight từ khóa tìm kiếm trong CCCD */}
+                        {searchField === "cccd" || searchField === "all"
+                          ? highlightText(emp.cccd, searchQuery)
+                          : emp.cccd}
+                      </td>
+                      <td>
+                        {/* Highlight từ khóa tìm kiếm trong tên */}
+                        {searchField === "name" || searchField === "all"
+                          ? highlightText(emp.name, searchQuery)
+                          : emp.name}
+                      </td>
                       <td>{emp.role}</td>
-                      <td>{emp.phone}</td>
+                      <td>
+                        {/* Highlight từ khóa tìm kiếm trong SĐT */}
+                        {searchField === "phone" || searchField === "all"
+                          ? highlightText(emp.phone, searchQuery)
+                          : emp.phone}
+                      </td>
                       <td style={{ textAlign: "center" }}>
                         <button
                           className="btn"
@@ -385,7 +484,7 @@ export default function ManageEmployees() {
                             }));
                             setError("");
                             setSuccess("");
-                            loadPhones(emp.id); // Load list SĐT phụ
+                            loadPhones(emp.id);
                             window.scrollTo(0, 0);
                           }}
                         >
@@ -502,7 +601,6 @@ export default function ManageEmployees() {
               </div>
             </div>
 
-            {/* Nếu đang thêm mới thì hiển thị ô nhập SĐT chính, nếu đang sửa thì hiển thị trình quản lý SĐT */}
             {!editing ? (
               <div>
                 <label style={styles.label}>SĐT Chính *</label>
@@ -641,7 +739,6 @@ export default function ManageEmployees() {
                 <option value="Quản lý">Quản lý</option>
               </select>
 
-              {/* --- HIỂN THỊ ID GIÁM SÁT CHO TẤT CẢ CHỨC DANH CẦN GIÁM SÁT --- */}
               {!["Quản lý", "Bếp trưởng"].includes(form.role) && (
                 <div style={{ marginTop: "10px" }}>
                   <label style={styles.label}>
@@ -709,6 +806,22 @@ export default function ManageEmployees() {
   );
 }
 
+// --- HELPER: Highlight từ khóa trong text ---
+function highlightText(text, query) {
+  if (!query || !text) return text;
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return text;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark style={{ background: "#fff176", borderRadius: "2px", padding: "0 1px" }}>
+        {text.slice(idx, idx + query.length)}
+      </mark>
+      {text.slice(idx + query.length)}
+    </>
+  );
+}
+
 const styles = {
   label: {
     fontSize: "12px",
@@ -741,5 +854,71 @@ const styles = {
     borderRadius: "8px",
     border: "1px solid #a5d6a7",
     fontWeight: "bold",
+  },
+
+  // --- SEARCH STYLES ---
+  searchBar: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    background: "white",
+    padding: "12px 16px",
+    borderRadius: "8px",
+    border: "1px solid #e0d6cc",
+    marginBottom: "12px",
+    boxShadow: "0 2px 6px rgba(90,56,30,0.07)",
+    flexWrap: "wrap",
+  },
+  searchSelect: {
+    padding: "8px 10px",
+    borderRadius: "6px",
+    border: "1px solid #c4b9a6",
+    fontSize: "13px",
+    fontWeight: "bold",
+    color: "#5a381e",
+    background: "#fdf6ef",
+    cursor: "pointer",
+    outline: "none",
+    minWidth: "110px",
+  },
+  searchInputWrapper: {
+    flex: 1,
+    minWidth: "200px",
+    position: "relative",
+    display: "flex",
+    alignItems: "center",
+  },
+  searchIcon: {
+    position: "absolute",
+    left: "10px",
+    fontSize: "14px",
+    pointerEvents: "none",
+  },
+  searchInput: {
+    width: "100%",
+    padding: "8px 32px 8px 32px",
+    borderRadius: "6px",
+    border: "1px solid #c4b9a6",
+    fontSize: "14px",
+    outline: "none",
+    transition: "border-color 0.2s",
+  },
+  clearBtn: {
+    position: "absolute",
+    right: "8px",
+    background: "none",
+    border: "none",
+    cursor: "pointer",
+    color: "#999",
+    fontSize: "12px",
+    padding: "2px 4px",
+    borderRadius: "50%",
+    lineHeight: 1,
+  },
+  resultCount: {
+    fontSize: "12px",
+    color: "#888",
+    whiteSpace: "nowrap",
+    fontStyle: "italic",
   },
 };

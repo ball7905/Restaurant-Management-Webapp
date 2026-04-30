@@ -33,7 +33,9 @@ export async function addEmployee(req, res) {
     request.input("CCCD", sql.VarChar(12), cccd);
     request.input("HoTen", sql.NVarChar(200), name);
     request.input("Username", sql.VarChar(50), username);
+
     request.input("Password", sql.VarChar(255), hash);
+    
     request.input("NgaySinh", sql.Date, dob);
     request.input("NgayVaoLam", sql.Date, startDate || new Date());
     request.input("Luong", sql.Decimal(12, 2), salary);
