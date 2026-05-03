@@ -130,3 +130,35 @@ END
 GO
 
 
+-- HÀM 3: LẤY TỔNG SỐ LƯỢNG 1 NGUYÊN LIỆU TỪ TẤT CẢ KHO
+-- Input: Mã nguyên liệu
+-- Output: Tổng số lượng.
+
+IF OBJECT_ID('dbo.fn_LayTongSoLuongNguyenLieu', 'FN') IS NOT NULL
+    DROP FUNCTION dbo.fn_LayTongSoLuongNguyenLieu;
+GO
+
+CREATE FUNCTION dbo.fn_LayTongSoLuongNguyenLieu (
+    @ID_NguyenLieu INT -- Mã nguyên liệu cần tính tổng
+)
+RETURNS DECIMAL(12, 2)
+AS
+BEGIN
+    -- Biến lưu trữ tổng số lượng
+    DECLARE @TongSoLuong DECIMAL(12, 2) = 0;
+
+    -- Kiểm tra xem nguyên liệu có tồn tại trong danh mục không
+    IF NOT EXISTS (SELECT 1 FROM NGUYENLIEU WHERE ID = @ID_NguyenLieu)
+    BEGIN
+        RETURN 0;
+    END
+
+    -- Cộng dồn số lượng từ bảng CHUA (quan hệ giữa Kho và Nguyên liệu)
+    SELECT @TongSoLuong = SUM(ISNULL(SoLuong, 0))
+    FROM CHUA
+    WHERE ID_NguyenLieu = @ID_NguyenLieu;
+
+    -- Trả về tổng số lượng (trả về 0 nếu chưa có ở kho nào)
+    RETURN ISNULL(@TongSoLuong, 0);
+END;
+GO
