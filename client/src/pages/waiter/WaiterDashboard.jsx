@@ -31,9 +31,10 @@ export default function WaiterDashBoard() {
     }
   }
 
-  async function loadMenu() {
+  async function loadMenu(refresh = false) {
     try {
-      const res = await fetch("http://localhost:3000/api/waiter/menu", {
+      const url = `http://localhost:3000/api/waiter/menu${refresh ? "?refresh=true" : ""}`;
+      const res = await fetch(url, {
         headers: getHeaders(),
       });
       if (res.ok) setMenuItems(await res.json());
@@ -44,7 +45,7 @@ export default function WaiterDashBoard() {
 
   useEffect(() => {
     loadActiveOrders();
-    loadMenu();
+    loadMenu(true);
     const interval = setInterval(loadActiveOrders, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -182,6 +183,8 @@ export default function WaiterDashBoard() {
       currency: "VND",
     }).format(amount);
 
+  const placeholderImage = "/shrimp_590711.png";
+
   return (
     <DashboardLayout>
       <h2 style={{ color: "#5a381e", marginBottom: "20px" }}>Phục Vụ Bàn</h2>
@@ -198,7 +201,7 @@ export default function WaiterDashBoard() {
                 {new Date(order.start_time).toLocaleTimeString("vi-VN", {
                   hour: "2-digit",
                   minute: "2-digit",
-                  timeZone: "UTC",
+                  timeZone: "Asia/Ho_Chi_Minh",
                 })}
               </div>
             </div>
@@ -267,9 +270,24 @@ export default function WaiterDashBoard() {
             <div style={styles.menuGrid}>
               {menuItems.map((item) => {
                 const qty = cart[item.id] || 0;
+                const imageUrl =
+                  item.imageURL || item.ImageURL || item.HinhAnh || item.url || placeholderImage;
                 return (
                   <div key={item.id} style={styles.menuItem}>
-                    <div style={{ fontWeight: "bold" }}>{item.name}</div>
+                    <img
+                      src={imageUrl}
+                      alt={item.name}
+                      style={styles.menuThumb}
+                      onError={(e) => {
+                        if (e.target.src !== placeholderImage) {
+                          e.target.onerror = null;
+                          e.target.src = placeholderImage;
+                        }
+                      }}
+                    />
+                    <div style={{ fontWeight: "bold", marginTop: "8px" }}>
+                      {item.name}
+                    </div>
                     <div style={{ color: "#b3541e", fontSize: "13px" }}>
                       {fmtMoney(item.price)}
                     </div>
@@ -407,7 +425,7 @@ export default function WaiterDashBoard() {
                   }}
                   onClick={handleSwitchToMenu}
                 >
-                  ➕ Gọi thêm món vào lượt này
+                  Gọi thêm món vào lượt này
                 </button>
               )}
 
@@ -421,7 +439,7 @@ export default function WaiterDashBoard() {
                   }}
                   onClick={() => handleServeRound(selectedRound.id)}
                 >
-                  ✅ Xác nhận Đã Phục Vụ
+                  Xác nhận Đã Phục Vụ
                 </button>
               )}
 
@@ -538,9 +556,9 @@ const styles = {
     background: "white",
     padding: "20px",
     borderRadius: "12px",
-    width: "600px",
-    maxWidth: "95%",
-    height: "80vh",
+    width: "90%",
+    maxWidth: "1000px",
+    height: "85vh",
     display: "flex",
     flexDirection: "column",
   },
@@ -559,8 +577,8 @@ const styles = {
   },
   menuGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
-    gap: "10px",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: "16px",
     overflowY: "auto",
     flex: 1,
     paddingRight: "5px",
@@ -568,11 +586,13 @@ const styles = {
   menuItem: {
     border: "1px solid #eee",
     borderRadius: "8px",
-    padding: "10px",
+    padding: "12px",
     display: "flex",
     flexDirection: "column",
     justifyContent: "space-between",
-    minHeight: "100px",
+    minHeight: "220px",
+    maxHeight: "320px",
+    overflow: "hidden",
   },
   counterControl: {
     display: "flex",
@@ -607,5 +627,12 @@ const styles = {
     borderRadius: "6px",
     fontWeight: "bold",
     cursor: "pointer",
+  },
+  menuThumb: {
+    width: "100%",
+    height: "100px",
+    objectFit: "cover",
+    borderRadius: "8px",
+    marginBottom: "10px",
   },
 };

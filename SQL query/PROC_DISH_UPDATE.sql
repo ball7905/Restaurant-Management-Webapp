@@ -3,6 +3,7 @@ CREATE PROCEDURE sp_ThemMonAn
     @DonGia         DECIMAL(12,0),
     @PhanLoai       NVARCHAR(10),   -- 'Mặn' hoặc 'Chay'
     @MoTa           NVARCHAR(500) = NULL,
+    @ImageURL       VARCHAR(500) = NULL,
     @DangPhucVu     BIT = 1,        -- Mặc định là đang bán
     @DangKinhDoanh  BIT = 1         -- Mặc định là còn kinh doanh
 AS
@@ -28,8 +29,8 @@ BEGIN
             THROW 50004, N'Lỗi: Phân loại món ăn không hợp lệ (Phải là Mặn hoặc Chay).', 1;
 
         -- Thêm mới
-        INSERT INTO MONAN (Ten, PhanLoai, MoTa, DonGia, DangPhucVu, DangKinhDoanh)
-        VALUES (@Ten, @PhanLoai, @MoTa, @DonGia, @DangPhucVu, @DangKinhDoanh);
+        INSERT INTO MONAN (Ten, PhanLoai, MoTa, DonGia, ImageURL, DangPhucVu, DangKinhDoanh)
+        VALUES (@Ten, @PhanLoai, @MoTa, @DonGia, @ImageURL, @DangPhucVu, @DangKinhDoanh);
 
         -- Lấy ID vừa tạo
         DECLARE @NewID INT = SCOPE_IDENTITY();
@@ -91,6 +92,7 @@ CREATE PROCEDURE sp_CapNhatMonAn
     @DonGia         DECIMAL(12,0) = NULL,
     @PhanLoai       NVARCHAR(10) = NULL,
     @MoTa           NVARCHAR(500) = NULL,
+    @ImageURL       VARCHAR(500) = NULL,
     @DangPhucVu     BIT = NULL
 AS
 BEGIN
@@ -120,6 +122,7 @@ BEGIN
             DonGia = ISNULL(@DonGia, DonGia),
             PhanLoai = ISNULL(@PhanLoai, PhanLoai),
             MoTa = ISNULL(@MoTa, MoTa),
+            ImageURL = ISNULL(@ImageURL, ImageURL),
             DangPhucVu = ISNULL(@DangPhucVu, DangPhucVu)
         WHERE ID = @ID;
 

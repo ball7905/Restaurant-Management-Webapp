@@ -18,7 +18,7 @@ export default function ManageMenu() {
     price: "",
     category: "Mặn", // Mặc định là Mặn để khớp Constraint
     description: "",
-    url: "",          // Đường dẫn hình ảnh món ăn (lấy từ DB)
+    imageURL: "",          // Đường dẫn hình ảnh món ăn (lấy từ DB)
   });
 
   // Tự động ẩn thông báo sau 5s
@@ -98,6 +98,7 @@ export default function ManageMenu() {
         body: JSON.stringify({
           ...form,
           price: parseFloat(form.price),
+          imageURL: form.imageURL,
         }),
       });
 
@@ -113,7 +114,7 @@ export default function ManageMenu() {
       await loadMenu();
 
       if (!editing) {
-        setForm({ name: "", price: "", category: "Mặn", description: "", url: "" });
+        setForm({ name: "", price: "", category: "Mặn", description: "", imageURL: "" });
       }
       setEditing(null);
       window.scrollTo(0, 0);
@@ -184,7 +185,7 @@ export default function ManageMenu() {
             </select>
 
             <div style={styles.searchInputWrapper}>
-              <span style={styles.searchIcon}>🔍</span>
+              <span style={styles.searchIcon}></span>
               <input
                 type="text"
                 placeholder={
@@ -219,9 +220,9 @@ export default function ManageMenu() {
             <table className="table">
               <thead>
                 <tr>
-                  <th style={{ width: "25%" }}>Tên Món</th>
-                  <th style={{ width: "15%" }}>Đơn Giá</th>
-                  <th style={{ width: "15%" }}>Phân Loại</th>
+                  <th style={{ width: "25%", textAlign: "left" }}>Tên Món</th>
+                  <th style={{ width: "15%", textAlign: "center" }}>Đơn Giá</th>
+                  <th style={{ width: "15%", textAlign: "center" }}>Phân Loại</th>
                   <th style={{ width: "15%", textAlign: "center" }}>Hình Ảnh</th>
                   <th style={{ width: "20%", textAlign: "center" }}>
                     Hành Động
@@ -261,13 +262,13 @@ export default function ManageMenu() {
                           ? highlightText(item.Ten || item.name, searchQuery)
                           : item.Ten || item.name}
                       </td>
-                      <td>
+                      <td style={{ textAlign: "center" }}>
                         {new Intl.NumberFormat("vi-VN", {
                           style: "currency",
                           currency: "VND",
                         }).format(item.DonGia || item.price)}
                       </td>
-                      <td>
+                      <td style={{ textAlign: "center" }}>
                         {/* Highlight phân loại */}
                         {searchField === "category" || searchField === "all"
                           ? highlightText(item.PhanLoai || item.category, searchQuery)
@@ -275,9 +276,9 @@ export default function ManageMenu() {
                       </td>
                       <td style={{ textAlign: "center" }}>
                         {/* Hiển thị thumbnail ảnh món ăn từ trường url trong DB */}
-                        {(item.HinhAnh || item.url) ? (
+                        {(item.ImageURL || item.HinhAnh || item.url) ? (
                           <img
-                            src={item.HinhAnh || item.url}
+                            src={item.ImageURL || item.HinhAnh || item.url}
                             alt={item.Ten || item.name}
                             style={imgStyles.thumbnail}
                             onError={(e) => { e.target.style.display = "none"; }}
@@ -301,6 +302,7 @@ export default function ManageMenu() {
                               price: item.DonGia || item.price,
                               category: item.PhanLoai || item.category,
                               description: item.MoTa || item.description || "",
+                              imageURL: item.ImageURL || item.HinhAnh || item.url || "",
                             });
                             setError("");
                             setSuccess("");
@@ -407,15 +409,15 @@ export default function ManageMenu() {
               <label style={styles.label}>Hình ảnh (URL)</label>
               <input
                 placeholder="https://example.com/anh-mon-an.jpg"
-                value={form.url}
-                onChange={(e) => setForm({ ...form, url: e.target.value })}
+                value={form.imageURL}
+                onChange={(e) => setForm({ ...form, imageURL: e.target.value })}
                 style={styles.input}
               />
               {/* Preview ảnh trực tiếp khi user nhập URL */}
-              {form.url && (
+              {form.imageURL && (
                 <div style={imgStyles.previewWrap}>
                   <img
-                    src={form.url}
+                    src={form.imageURL}
                     alt="Preview"
                     style={imgStyles.preview}
                     onError={(e) => { e.target.style.display = "none"; }}
@@ -453,7 +455,7 @@ export default function ManageMenu() {
                     price: "",
                     category: "Mặn",
                     description: "",
-                    url: "",
+                    imageURL: "",
                   });
                   setError("");
                   setSuccess("");

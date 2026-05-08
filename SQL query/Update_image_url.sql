@@ -1,6 +1,10 @@
 -- =====================================================
 -- CẬP NHẬT ẢNH CHO CÁC MÓN MẶN
 -- =====================================================
+ALTER TABLE MONAN
+ADD ImageURL VARCHAR(500) NULL;
+GO
+
 UPDATE MONAN 
 SET ImageURL = 'https://i.pinimg.com/1200x/62/8d/5e/628d5e6851bbfff69727b8a825c06455.jpg' 
 WHERE Ten = N'Phở Bò Đặc Biệt';

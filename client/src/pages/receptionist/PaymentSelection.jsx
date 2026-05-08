@@ -5,6 +5,7 @@ import DashboardLayout from "../../components/DashboardLayout.jsx";
 export default function PaymentSelection() {
   const [orders, setOrders] = useState([]);
   const navigate = useNavigate();
+  const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
   // --- STATE CHO MODAL THANH TOÁN NHANH ---
   const [showModal, setShowModal] = useState(false);
@@ -23,7 +24,7 @@ export default function PaymentSelection() {
 
   // 1. LOAD DANH SÁCH ĐƠN
   const loadOrders = () => {
-    fetch("http://localhost:3000/api/reception/serving-orders", {
+    fetch(`${API_BASE}/api/reception/serving-orders`, {
       headers: getHeaders(),
     })
       .then((res) => res.json())
@@ -36,7 +37,7 @@ export default function PaymentSelection() {
     // Auto refresh để cập nhật đơn mới
     const interval = setInterval(loadOrders, 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, [API_BASE]);
 
   // 2. MỞ MODAL THANH TOÁN NHANH
   const handleOpenQuickPay = (e, order) => {
@@ -68,7 +69,7 @@ export default function PaymentSelection() {
     };
 
     try {
-      const res = await fetch("http://localhost:3000/api/reception/pay", {
+      const res = await fetch(`${API_BASE}/api/reception/pay`, {
         method: "POST",
         headers: getHeaders(),
         body: JSON.stringify(payload),
@@ -107,7 +108,7 @@ export default function PaymentSelection() {
           Chọn Đơn Hàng Thanh Toán
         </h2>
         <button onClick={loadOrders} style={styles.refreshBtn}>
-          🔄 Làm mới
+          Làm mới
         </button>
       </div>
 

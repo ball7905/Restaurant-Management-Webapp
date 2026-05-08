@@ -1,5 +1,6 @@
 import sql from "mssql";
 import { pool, poolConnect } from "../db.js";
+import redisClient from "../config/redisClient.js";
 
 /* -------- GET TABLES WITH STATUS BY TIME (Lọc bàn theo giờ) -------- */
 export async function getTables(req, res) {
@@ -17,23 +18,28 @@ export async function getTables(req, res) {
     request.input("Date", sql.Date, date);
     request.input("Hour", sql.Int, hour);
 
-    // Query: Lấy tất cả bàn, Join với DATBAN để xem trong giờ đó có đơn nào không
-    // Chỉ lấy đơn chưa hủy
+    // Tạo khoảng thời gian bắt đầu và kết thúc cho giờ được chọn
+    // Hạn chế so sánh bằng DATEPART, tránh sai lệch giờ do lưu trữ datetime
     const query = `
+      DECLARE @DateTimeStart DATETIME2 = DATEADD(HOUR, @Hour, CAST(@Date AS DATETIME2));
+      DECLARE @DateTimeEnd DATETIME2 = DATEADD(HOUR, 1, @DateTimeStart);
+
       SELECT 
         B.ID_Ban as id, 
         B.SucChua as capacity, 
-        CASE 
-            WHEN D.TrangThai IS NOT NULL THEN D.TrangThai 
-            ELSE N'Trống' 
-        END as status,
+        COALESCE(D.TrangThai, N'Trống') as status,
         D.ID_DatBan as bookingId,
         K.HoTen as guestName
       FROM BAN B
-      LEFT JOIN DATBAN D ON B.ID_Ban = D.ID_Ban 
-        AND D.TrangThai <> N'Đã hủy'
-        AND CAST(D.ThoiGianDat AS DATE) = @Date
-        AND DATEPART(HOUR, D.ThoiGianDat) = @Hour
+      OUTER APPLY (
+        SELECT TOP 1 *
+        FROM DATBAN D2
+        WHERE D2.ID_Ban = B.ID_Ban
+          AND D2.TrangThai <> N'Đã hủy'
+          AND D2.ThoiGianDat >= @DateTimeStart
+          AND D2.ThoiGianDat < @DateTimeEnd
+        ORDER BY D2.ID_DatBan DESC
+      ) D
       LEFT JOIN KHACHHANG K ON D.SDT_Khach = K.SDT
       ORDER BY B.ID_Ban ASC
     `;
@@ -49,7 +55,7 @@ export async function getTables(req, res) {
 export async function getBookings(req, res) {
   try {
     await poolConnect;
-    // Lấy danh sách đặt bàn (Sắp xếp đơn mới nhất lên đầu)
+    // Lấy danh sách đặt bàn (Sắp xếp đơn từ xa nhất đến gần nhất)
     const result = await pool.request().query(`
       SELECT TOP 50
         D.ID_DatBan as id,
@@ -63,7 +69,7 @@ export async function getBookings(req, res) {
       FROM DATBAN D
       LEFT JOIN BAN B ON D.ID_Ban = B.ID_Ban
       LEFT JOIN KHACHHANG K ON D.SDT_Khach = K.SDT
-      ORDER BY D.ThoiGianDat ASC
+      ORDER BY D.ThoiGianDat DESC
     `);
     res.json(result.recordset);
   } catch (err) {
@@ -217,6 +223,10 @@ export async function processPayment(req, res) {
 
     const result = await request.execute("sp_ThanhToan");
 
+    // Invalidate cache after successful payment
+    const cacheKey = `invoice:${order_id}`;
+    await redisClient.del(cacheKey);
+
     res.json({
       success: true,
       message: result.recordset[0]?.Message,
@@ -241,8 +251,14 @@ export async function getServingOrders(req, res) {
         ISNULL(D.TongTienTamTinh, 0) as totalAmount
 
       FROM DONGOIMON D
-      LEFT JOIN DATBAN DB ON D.ID_Ban = DB.ID_Ban AND DB.TrangThai = N'Đã nhận bàn'
-      LEFT JOIN KHACHHANG K ON DB.SDT_Khach = K.SDT
+      OUTER APPLY (
+        SELECT TOP 1 DB.SDT_Khach
+        FROM DATBAN DB
+        WHERE DB.ID_Ban = D.ID_Ban
+          AND DB.TrangThai = N'Đã nhận bàn'
+        ORDER BY ABS(DATEDIFF(SECOND, DB.ThoiGianDat, DATEADD(HOUR, 7, D.ThoiGianTao))), DB.ID_DatBan DESC
+      ) CurrentBooking
+      LEFT JOIN KHACHHANG K ON CurrentBooking.SDT_Khach = K.SDT
       WHERE D.TrangThai = N'Đang phục vụ'
       ORDER BY D.ThoiGianTao DESC
     `);
@@ -256,42 +272,64 @@ export async function getServingOrders(req, res) {
 // 2. API SỬA ĐỔI: Lấy chi tiết hóa đơn theo ORDER ID (Không dùng Table ID nữa)
 export async function getBillDetails(req, res) {
   const { orderId } = req.params;
+  const cacheKey = `invoice:${orderId}`;
+
   try {
+    // Check cache first
+    console.log(`Checking cache for key: ${cacheKey}`);
+    const cachedData = await redisClient.get(cacheKey);
+    if (cachedData) {
+      console.log(`Cache hit for ${cacheKey}`);
+      return res.json(JSON.parse(cachedData));
+    }
+    console.log(`Cache miss for ${cacheKey}`);
+
     await poolConnect;
 
-    // SỬA LẠI: Dùng LEFT JOIN để luôn lấy được thông tin đơn hàng dù chưa có món
-    const result = await pool.request().input("ID_Don", sql.Int, orderId)
-      .query(`
-        SELECT 
-            -- Thông tin Header (Đơn hàng)
-            D.ID as OrderID,
-            D.ID_Ban, 
-            D.ThoiGianTao,
-            
-            -- Thông tin Detail (Món ăn) - Có thể NULL nếu chưa gọi món
-            M.Ten as item_name,
-            LM.SoLuong as quantity,
-            LM.DonGiaThoiDiem as price,
-            (LM.SoLuong * LM.DonGiaThoiDiem) as total
-        FROM DONGOIMON D
-        -- Dùng LEFT JOIN để không bị mất đơn hàng nếu chưa có món
-        LEFT JOIN LANGOIMON L ON D.ID = L.ID_Don 
-        LEFT JOIN LANGOIMON_MON LM ON L.ID = LM.ID_LanGoi 
-        LEFT JOIN MONAN M ON LM.ID_MonAn = M.ID
-        WHERE D.ID = @ID_Don
-      `);
+    const result = await pool.request().input("ID_Don", sql.Int, orderId).query(`
+      SELECT 
+          D.ID as OrderID,
+          D.ID_Ban,
+          D.ThoiGianTao,
+          D.TrangThai,
+          HD.ID as InvoiceID,
+          HD.ThoiGianTao as InvoiceTime,
+          HD.TongTienMon,
+          HD.Thue,
+          HD.TongGiamGia,
+          HD.ThanhTien,
+          HD.SDT_Khach,
+          COALESCE(K.HoTen, K2.HoTen) as CustomerName,
+          GT.PhuongThuc as PaymentMethod,
+          GT.TrangThai as PaymentStatus,
+          M.Ten as item_name,
+          LM.SoLuong as quantity,
+          LM.DonGiaThoiDiem as price,
+          (LM.SoLuong * LM.DonGiaThoiDiem) as total
+      FROM DONGOIMON D
+      LEFT JOIN HOADON HD ON HD.ID_Don = D.ID
+      LEFT JOIN GIAODICHTHANHTOAN GT ON GT.ID_HoaDon = HD.ID
+      LEFT JOIN KHACHHANG K ON K.SDT = HD.SDT_Khach
+      OUTER APPLY (
+        SELECT TOP 1 DB.SDT_Khach
+        FROM DATBAN DB
+        WHERE DB.ID_Ban = D.ID_Ban
+          AND DB.TrangThai IN (N'Đã đặt', N'Đã nhận bàn')
+        ORDER BY ABS(DATEDIFF(SECOND, DB.ThoiGianDat, DATEADD(HOUR, 7, D.ThoiGianTao))), DB.ID_DatBan DESC
+      ) CurrentBooking
+      LEFT JOIN KHACHHANG K2 ON K2.SDT = CurrentBooking.SDT_Khach
+      LEFT JOIN LANGOIMON L ON D.ID = L.ID_Don
+      LEFT JOIN LANGOIMON_MON LM ON L.ID = LM.ID_LanGoi
+      LEFT JOIN MONAN M ON LM.ID_MonAn = M.ID
+      WHERE D.ID = @ID_Don
+    `);
 
-    // Nếu không tìm thấy đơn hàng nào (ID sai)
     if (result.recordset.length === 0) {
       return res.status(404).json({ error: "Đơn hàng không tồn tại." });
     }
 
-    // Lấy thông tin Header từ dòng đầu tiên
-    const firstRow = result.recordset[0];
-
-    // Map danh sách món (Lọc bỏ những dòng NULL do Left Join sinh ra)
     const items = result.recordset
-      .filter((row) => row.item_name !== null) // Chỉ lấy dòng có món ăn
+      .filter((row) => row.item_name !== null)
       .map((row) => ({
         item_name: row.item_name,
         quantity: row.quantity,
@@ -299,17 +337,49 @@ export async function getBillDetails(req, res) {
         total: row.total,
       }));
 
-    // Tính tổng tiền
-    const totalAmount = items.reduce((sum, item) => sum + (item.total || 0), 0);
+    const firstRow = result.recordset[0];
+    const customerName =
+      result.recordset.find((row) => row.CustomerName)?.CustomerName || "";
+    const customerPhone =
+      result.recordset.find((row) => row.CustomerPhone)?.CustomerPhone || "";
 
-    res.json({
+    const itemTotal = items.reduce(
+      (sum, item) => sum + Number(item.total || 0),
+      0
+    );
+    const totalAmount = Number(firstRow.TongTienMon ?? itemTotal) || itemTotal;
+    const taxAmount = Number(firstRow.Thue ?? 0) || 0;
+    const discountAmount = Number(firstRow.TongGiamGia ?? 0) || 0;
+    const invoiceTotal = Number(
+      firstRow.ThanhTien ?? totalAmount + taxAmount - discountAmount
+    );
+
+    const billData = {
       order_id: firstRow.OrderID,
       table_id: firstRow.ID_Ban,
       order_time: firstRow.ThoiGianTao,
-      items: items,
+      order_status: firstRow.TrangThai,
+      invoice_id: firstRow.InvoiceID,
+      invoice_time: firstRow.InvoiceTime,
+      customer_phone: customerPhone,
+      customer_name: customerName,
+      payment_method: firstRow.PaymentMethod || "Chưa chọn",
+      payment_status: firstRow.PaymentStatus || "Chưa thanh toán",
+      items,
       total_amount: totalAmount,
-    });
+      sub_total: itemTotal,
+      tax_amount: taxAmount,
+      discount_amount: discountAmount,
+      invoice_total: invoiceTotal,
+    };
+
+    // Cache the data for 5 minutes
+    await redisClient.setEx(cacheKey, 300, JSON.stringify(billData));
+    console.log(`Cached invoice ${cacheKey} (ttl 300s)`);
+
+    res.json(billData);
   } catch (err) {
+    console.error('getBillDetails error:', err);
     res.status(500).json({ error: err.message });
   }
 }

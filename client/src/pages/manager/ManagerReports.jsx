@@ -120,7 +120,7 @@ function ViewReport({ onError }) {
           <option value="Năm">Năm</option>
         </select>
         <button onClick={loadData} style={styles.btn}>
-          🔄 Làm mới
+          Làm mới
         </button>
       </div>
 

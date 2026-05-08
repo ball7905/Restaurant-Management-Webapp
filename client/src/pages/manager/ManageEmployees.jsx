@@ -362,7 +362,6 @@ export default function ManageEmployees() {
 
             {/* Ô nhập từ khóa */}
             <div style={styles.searchInputWrapper}>
-              <span style={styles.searchIcon}>🔍</span>
               <input
                 type="text"
                 placeholder={

@@ -1,6 +1,7 @@
 import sql from "mssql";
 import bcrypt from "bcrypt";
 import { pool, poolConnect } from "../db.js";
+import redisClient from "../config/redisClient.js";
 
 /* ---------------- EMPLOYEES (NHANVIEN) ---------------- */
 
@@ -201,7 +202,7 @@ export async function deleteEmployeePhone(req, res) {
 /* ---------------- MENU (MONAN) ---------------- */
 
 export async function addMenuItem(req, res) {
-  const { name, price, category, description } = req.body;
+  const { name, price, category, description, imageURL } = req.body;
   try {
     await poolConnect;
     const result = await pool
@@ -210,11 +211,16 @@ export async function addMenuItem(req, res) {
       .input("DonGia", sql.Decimal(12, 0), price)
       .input("PhanLoai", sql.NVarChar(10), category)
       .input("MoTa", sql.NVarChar(500), description || "")
+      .input("ImageURL", sql.VarChar(500), imageURL || null)
       .input("DangPhucVu", sql.Bit, 1)
       .input("DangKinhDoanh", sql.Bit, 1)
       .execute("sp_ThemMonAn");
 
     const dbMessage = result.recordset[0]?.Message;
+
+    // Invalidate menu cache
+    await redisClient.del('menu:all');
+
     res.json({
       success: true,
       message: dbMessage,
@@ -239,7 +245,7 @@ export async function getMenuItems(req, res) {
 
 export async function updateMenuItem(req, res) {
   const { id } = req.params;
-  const { name, price, category, description, isServing } = req.body;
+  const { name, price, category, description, isServing, imageURL } = req.body;
   try {
     await poolConnect;
     const request = pool.request();
@@ -249,11 +255,17 @@ export async function updateMenuItem(req, res) {
     if (category) request.input("PhanLoai", sql.NVarChar(10), category);
     if (description !== undefined)
       request.input("MoTa", sql.NVarChar(500), description);
+    if (imageURL !== undefined)
+      request.input("ImageURL", sql.VarChar(500), imageURL);
     if (isServing !== undefined)
       request.input("DangPhucVu", sql.Bit, isServing);
 
     const result = await request.execute("sp_CapNhatMonAn");
     const dbMessage = result.recordset[0]?.Message;
+
+    // Invalidate menu cache
+    await redisClient.del('menu:all');
+
     res.json({ success: true, message: dbMessage });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -270,6 +282,10 @@ export async function deleteMenuItem(req, res) {
       .execute("sp_XoaMonAn");
 
     const dbMessage = result.recordset[0]?.Message;
+
+    // Invalidate menu cache
+    await redisClient.del('menu:all');
+
     res.json({ success: true, message: dbMessage });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -355,8 +371,8 @@ export async function getRevenueReport(req, res) {
         Ky, 
         Nam, 
         TongDoanhThu, 
-        TongChiPhi, 
-        LoiNhuan,
+        TongChiPhi,
+        (TongDoanhThu - TongChiPhi) AS LoiNhuan,
         ThoiGianLap
       FROM BAOCAODOANHTHU
       WHERE 1=1
@@ -400,5 +416,35 @@ export async function generatePeriodicReport(req, res) {
     res.json({ success: true, message, data });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
+  }
+}
+
+// 3. API Lấy doanh thu từng ngày của tháng/năm để vẽ biểu đồ
+// GET /api/manager/reports/daily-revenue?year=2026&month=5
+export async function getDailyRevenue(req, res) {
+  try {
+    await poolConnect;
+    const { year = new Date().getFullYear(), month = new Date().getMonth() + 1 } = req.query;
+
+    const request = pool.request();
+    request.input("Year", sql.Int, year);
+    request.input("Month", sql.Int, month);
+
+    // Tính doanh thu từng ngày trong tháng (convert từ UTC sang Vietnam timezone +7)
+    const result = await request.query(`
+      SELECT 
+        CONVERT(DATE, DATEADD(HOUR, 7, ThoiGianThanhToan)) AS [Ngay],
+        DAY(CONVERT(DATE, DATEADD(HOUR, 7, ThoiGianThanhToan))) AS [ChiSoNgay],
+        ISNULL(SUM(ThanhTien), 0) AS [DoanhThu]
+      FROM THANHTOAN
+      WHERE YEAR(CONVERT(DATE, DATEADD(HOUR, 7, ThoiGianThanhToan))) = @Year
+        AND MONTH(CONVERT(DATE, DATEADD(HOUR, 7, ThoiGianThanhToan))) = @Month
+      GROUP BY CONVERT(DATE, DATEADD(HOUR, 7, ThoiGianThanhToan))
+      ORDER BY CONVERT(DATE, DATEADD(HOUR, 7, ThoiGianThanhToan)) ASC
+    `);
+
+    res.json(result.recordset);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 }

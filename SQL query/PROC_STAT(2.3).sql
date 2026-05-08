@@ -50,11 +50,14 @@ BEGIN
     DECLARE @Orders INT = 0;
     DECLARE @Customers INT = 0;
 
-    -- 3. Tính Doanh thu (THANHTOAN)
-    SELECT @Revenue = ISNULL(SUM(ThanhTien), 0)
-    FROM THANHTOAN WITH(NOLOCK)
-    WHERE ThoiGianThanhToan >= @StartOfDay 
-      AND ThoiGianThanhToan < @EndOfDay;
+        -- 3. Tính Doanh thu từ giao dịch thanh toán thành công
+        -- Nguồn dữ liệu mới: GIAODICHTHANHTOAN + HOADON
+        SELECT @Revenue = ISNULL(SUM(TT.SoTien), 0)
+        FROM GIAODICHTHANHTOAN TT WITH(NOLOCK)
+        INNER JOIN HOADON HD WITH(NOLOCK) ON HD.ID = TT.ID_HoaDon
+        WHERE TT.TrangThai = N'Thành công'
+            AND TT.ThoiGianGiaoDich >= @StartOfDay
+            AND TT.ThoiGianGiaoDich < @EndOfDay;
 
     -- 4. Tính Số đơn gọi món (DONGOIMON)
     SELECT @Orders = COUNT(*)

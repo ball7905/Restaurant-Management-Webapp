@@ -1,6 +1,35 @@
 import { useEffect, useState } from "react";
 import DashboardLayout from "../../components/DashboardLayout.jsx";
 
+const VIETNAM_TIMEZONE = "Asia/Ho_Chi_Minh";
+
+function getVietnamDateString() {
+  const now = new Date();
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: VIETNAM_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+}
+
+function getVietnamHour() {
+  const now = new Date();
+  const hourString = new Intl.DateTimeFormat("en-GB", {
+    timeZone: VIETNAM_TIMEZONE,
+    hour: "2-digit",
+    hour12: false,
+  }).format(now);
+  return Number(hourString);
+}
+
+function formatVietnamDateTime(value) {
+  if (!value) return "";
+  return new Date(value).toLocaleString("vi-VN", {
+    timeZone: VIETNAM_TIMEZONE,
+  });
+}
+
 export default function ReceptionDashboard() {
   const [tables, setTables] = useState([]);
   const [bookings, setBookings] = useState([]); // List bên phải
@@ -9,10 +38,9 @@ export default function ReceptionDashboard() {
   const [showModal, setShowModal] = useState(false);
 
   // FILTER STATE (Mặc định là Hôm nay và Giờ hiện tại)
-  const [filterDate, setFilterDate] = useState(
-    new Date().toISOString().split("T")[0]
-  );
-  const [filterHour, setFilterHour] = useState(new Date().getUTCHours());
+  const [filterDate, setFilterDate] = useState(getVietnamDateString());
+  const [filterHour, setFilterHour] = useState(getVietnamHour());
+  const [searchText, setSearchText] = useState("");
 
   const [form, setForm] = useState({
     guest_name: "",
@@ -21,14 +49,43 @@ export default function ReceptionDashboard() {
     note: "",
   });
 
+  const currentBookingsByTable = bookings.reduce((acc, booking) => {
+    if (!booking.tableId || !booking.bookingTime) return acc;
+    const bookingDate = new Date(booking.bookingTime);
+    if (Number.isNaN(bookingDate.getTime())) return acc;
+
+    const bookingDateString = bookingDate.toLocaleDateString("en-CA", {
+      timeZone: VIETNAM_TIMEZONE,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    const bookingHour = Number(
+      bookingDate
+        .toLocaleTimeString("en-GB", {
+          hour12: false,
+          timeZone: VIETNAM_TIMEZONE,
+          hour: "2-digit",
+        })
+        .split(":")[0]
+    );
+
+    if (bookingDateString === filterDate && bookingHour === filterHour) {
+      acc[booking.tableId] = booking;
+    }
+    return acc;
+  }, {});
+
   const getHeaders = () => ({
     "Content-Type": "application/json",
     Authorization: "Bearer " + sessionStorage.getItem("token"),
   });
 
+  const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
   // Load Tables theo Filter Date & Hour
   function loadTables() {
-    const url = `http://localhost:3000/api/reception/tables?date=${filterDate}&hour=${filterHour}`;
+    const url = `${API_BASE}/api/reception/tables?date=${filterDate}&hour=${filterHour}`;
     fetch(url, { headers: getHeaders() })
       .then((res) => res.json())
       .then(setTables)
@@ -37,7 +94,7 @@ export default function ReceptionDashboard() {
 
   // Load Bookings (List bên phải - có thể load chung hoặc riêng)
   function loadBookings() {
-    fetch("http://localhost:3000/api/reception/bookings", {
+    fetch(`${API_BASE}/api/reception/bookings`, {
       headers: getHeaders(),
     })
       .then((res) => res.json())
@@ -62,15 +119,14 @@ export default function ReceptionDashboard() {
       return;
     }
 
-    // Ghép Date và Hour thành datetime string ISO
-    // Format: YYYY-MM-DDTHH:00:00
-    const bookingTime = `${filterDate}" "${String(filterHour).padStart(
+    // Dùng giờ địa phương Việt Nam (không gắn hậu tố Z/UTC)
+    const bookingTime = `${filterDate}T${String(filterHour).padStart(
       2,
       "0"
-    )}:00:00Z`;
+    )}:00:00`;
 
     try {
-      const res = await fetch("http://localhost:3000/api/reception/book", {
+      const res = await fetch(`${API_BASE}/api/reception/book`, {
         method: "POST",
         headers: getHeaders(),
         body: JSON.stringify({
@@ -101,7 +157,7 @@ export default function ReceptionDashboard() {
     if (!confirm("Khách đã đến? Nhận bàn ngay?")) return;
     try {
       const res = await fetch(
-        `http://localhost:3000/api/reception/check-in/${bookingId}`,
+        `${API_BASE}/api/reception/check-in/${bookingId}`,
         {
           method: "POST",
           headers: getHeaders(),
@@ -125,7 +181,7 @@ export default function ReceptionDashboard() {
 
     try {
       const res = await fetch(
-        `http://localhost:3000/api/reception/cancel/${bookingId}`,
+        `${API_BASE}/api/reception/cancel/${bookingId}`,
         {
           method: "POST",
           headers: getHeaders(),
@@ -142,9 +198,14 @@ export default function ReceptionDashboard() {
   }
 
   function getTableColor(status) {
-    if (status === "Trống") return "#4caf50"; // Xanh
-    if (status === "Đã đặt") return "#ff9800"; // Cam
-    if (status === "Đang phục vụ") return "#e53935"; // Đỏ
+    return status === "Trống" ? "#4caf50" : "#9e9e9e"; // Xanh nếu trống, xám nếu đã đặt/nhận bàn
+  }
+
+  function getBookingStatusBadgeColor(status) {
+    if (status === "Đã đặt") return "#ff9800";
+    if (status === "Đã nhận bàn") return "#9e9e9e";
+    if (status === "Đang phục vụ") return "#e53935";
+    if (status === "Đã hủy") return "#757575";
     return "#9e9e9e";
   }
 
@@ -188,7 +249,7 @@ export default function ReceptionDashboard() {
           >
             {hours.map((h) => (
               <option key={h} value={h}>
-                {h}:00
+                {String(h).padStart(2, "0")}:00
               </option>
             ))}
           </select>
@@ -196,7 +257,7 @@ export default function ReceptionDashboard() {
         <div style={{ marginLeft: "auto", fontStyle: "italic", color: "#666" }}>
           Đang xem trạng thái lúc:{" "}
           <strong>
-            {filterHour}:00, {filterDate}
+            {String(filterHour).padStart(2, "0")}:00, {filterDate} (GMT+7)
           </strong>
         </div>
       </div>
@@ -218,34 +279,37 @@ export default function ReceptionDashboard() {
               gap: "15px",
             }}
           >
-            {tables.map((t) => (
-              <div
-                key={t.id}
-                onClick={() => {
-                  // Chỉ cho phép click để đặt bàn nếu bàn Trống
-                  // Nếu bàn đã đặt/đang phục vụ thì có thể hiện thông tin chi tiết (tùy chọn)
-                  if (t.status === "Trống") {
-                    setSelectedTable(t);
-                    setShowModal(true);
-                  } else {
-                    alert(
-                      `Bàn ${t.id} đang ${t.status}.\nKhách: ${
-                        t.guestName || "N/A"
-                      }`
-                    );
-                  }
-                }}
-                style={{
-                  padding: "15px",
-                  borderRadius: "12px",
-                  cursor: t.status === "Trống" ? "pointer" : "default",
-                  color: "white",
-                  textAlign: "center",
-                  background: getTableColor(t.status),
-                  boxShadow: "0 3px 6px rgba(0,0,0,0.15)",
-                  position: "relative",
-                }}
-              >
+            {tables.map((t) => {
+              const activeBooking = currentBookingsByTable[t.id];
+              const displayStatus = activeBooking?.status || t.status;
+              const displayGuestName = activeBooking?.guestName || t.guestName;
+
+              return (
+                <div
+                  key={t.id}
+                  onClick={() => {
+                    if (displayStatus === "Trống") {
+                      setSelectedTable(t);
+                      setShowModal(true);
+                    } else {
+                      alert(
+                        `Bàn ${t.id} đang ${displayStatus}.\nKhách: ${
+                          displayGuestName || "N/A"
+                        }`
+                      );
+                    }
+                  }}
+                  style={{
+                    padding: "15px",
+                    borderRadius: "12px",
+                    cursor: displayStatus === "Trống" ? "pointer" : "default",
+                    color: "white",
+                    textAlign: "center",
+                    background: getTableColor(displayStatus),
+                    boxShadow: "0 3px 6px rgba(0,0,0,0.15)",
+                    position: "relative",
+                  }}
+                >
                 <div style={{ fontWeight: "bold", fontSize: "1.1rem" }}>
                   Bàn {t.id}
                 </div>
@@ -264,10 +328,11 @@ export default function ReceptionDashboard() {
                     textTransform: "uppercase",
                   }}
                 >
-                  {t.status}
+                  {displayStatus}
                 </div>
               </div>
-            ))}
+            );
+          })}
           </div>
         </div>
 
@@ -290,12 +355,36 @@ export default function ReceptionDashboard() {
               marginTop: 0,
               borderBottom: "2px solid #eee",
               paddingBottom: "10px",
+              marginBottom: "15px",
             }}
           >
             Danh Sách Đơn Đặt
           </h3>
 
-          {bookings.map((b) => (
+          <div style={{ marginBottom: "15px" }}>
+            <input
+              type="text"
+              placeholder="Tìm theo tên hoặc số điện thoại..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "10px",
+                borderRadius: "6px",
+                border: "1px solid #ddd",
+                fontSize: "14px",
+                boxSizing: "border-box",
+              }}
+            />
+          </div>
+
+          {bookings
+            .filter(
+              (b) =>
+                b.guestName.toLowerCase().includes(searchText.toLowerCase()) ||
+                (b.phone && b.phone.includes(searchText))
+            )
+            .map((b) => (
             <div
               key={b.id}
               style={{ borderBottom: "1px dashed #ddd", padding: "15px 0" }}
@@ -319,7 +408,7 @@ export default function ReceptionDashboard() {
                 <span
                   style={{
                     fontSize: "12px",
-                    background: getTableColor(b.status),
+                    background: getBookingStatusBadgeColor(b.status),
                     color: "white",
                     padding: "2px 6px",
                     borderRadius: "4px",
@@ -334,13 +423,10 @@ export default function ReceptionDashboard() {
                 <div>
                   {" "}
                   📅{" "}
-                  {new Date(b.bookingTime).toLocaleString("vi-VN", {
-                    timeZone: "UTC",
-                  })}{" "}
-                  (UTC)
+                  {formatVietnamDateTime(b.bookingTime)} (GMT+7)
                 </div>
                 <div>
-                  📞 {b.phone} — 👥 {b.guestCount} khách
+                  📞 {b.phone} — {b.guestCount} khách
                 </div>
                 {b.tableId && (
                   <div>

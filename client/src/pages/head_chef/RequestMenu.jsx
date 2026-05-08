@@ -217,7 +217,7 @@ export default function MenuRequests() {
             </div>
 
             <button type="submit" style={styles.submitBtn}>
-              🚀 Gửi Yêu Cầu Cho Quản Lý
+              Gửi Yêu Cầu Cho Quản Lý
             </button>
           </form>
         </div>

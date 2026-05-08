@@ -14,6 +14,7 @@ import {
   deleteEmployeePhone,
   getRevenueReport,
   generatePeriodicReport,
+  getDailyRevenue,
 } from "../controllers/managerController.js";
 import {
   getPendingMenuRequests,
@@ -38,6 +39,7 @@ router.post("/process/:id", processMenuRequest);
 
 router.get("/reports/revenue", getRevenueReport);
 router.post("/reports/generate", generatePeriodicReport);
+router.get("/reports/daily-revenue", getDailyRevenue);
 
 //redundant manager directly update menu
 router.post("/add-menu-item", addMenuItem);

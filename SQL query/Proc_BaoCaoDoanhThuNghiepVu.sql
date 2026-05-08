@@ -95,11 +95,18 @@ BEGIN
 
         COMMIT TRANSACTION;
         -- 4. HIỂN THỊ KẾT QUẢ VỪA TẠO
-        PRINT N'Đã tạo báo cáo thành công!';
-        -- For backend use
+        -- Trả về Message và dữ liệu báo cáo (với LoiNhuan tính toán)
         SELECT 
-        N'Đã tạo báo cáo thành công!' AS Message,
-        * FROM BAOCAODOANHTHU 
+            N'Đã tạo báo cáo thành công!' AS Message,
+            ID,
+            ThoiGianLap,
+            LoaiBaoCao,
+            Ky,
+            Nam,
+            TongDoanhThu,
+            TongChiPhi,
+            (TongDoanhThu - TongChiPhi) AS LoiNhuan
+        FROM BAOCAODOANHTHU 
         WHERE LoaiBaoCao = @LoaiBaoCao AND Ky = @Ky AND Nam = @Nam;
     END TRY
     BEGIN CATCH
