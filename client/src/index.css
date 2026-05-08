@@ -103,3 +103,60 @@ button:hover,
   padding: 10px;
   border-bottom: 1px solid #e2dcd3; /* be nhạt */
 }
+
+@media print {
+  body,
+  html,
+  #root {
+    background: white !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .receipt-print-area,
+  .receipt-print-area * {
+    visibility: visible;
+  }
+
+  .receipt-print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 10mm;
+    background: white;
+    color: black;
+    font-family: Arial, sans-serif;
+  }
+
+  .receipt-print-area button,
+  .no-print {
+    display: none !important;
+  }
+
+  .receipt-print-area table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+  }
+
+  .receipt-print-area th,
+  .receipt-print-area td {
+    border-bottom: 1px dashed #333;
+    padding: 6px 0;
+    font-size: 12px;
+  }
+
+  .receipt-print-area th {
+    text-align: left;
+    font-weight: 700;
+    color: #111;
+  }
+
+  .receipt-print-area td:last-child,
+  .receipt-print-area th:last-child {
+    text-align: right;
+  }
+}

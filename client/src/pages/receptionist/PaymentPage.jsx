@@ -25,15 +25,21 @@ export default function PaymentPage() {
     Authorization: "Bearer " + sessionStorage.getItem("token"),
   });
 
+  const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
   // 1. LOAD CHI TIẾT HÓA ĐƠN
   useEffect(() => {
     // Gọi API endpoint mới
-    fetch(`http://localhost:3000/api/reception/bill/${orderId}`, {
+    fetch(`${API_BASE}/api/reception/bill/${orderId}`, {
       headers: getHeaders(),
     })
-      .then((res) => {
-        if (!res.ok) throw new Error("Không tìm thấy hóa đơn");
-        return res.json();
+      .then(async (res) => {
+        const body = await res.json().catch(() => null);
+        if (!res.ok) {
+          const msg = body?.error || body?.message || "Không tìm thấy hóa đơn";
+          throw new Error(msg);
+        }
+        return body;
       })
       .then(setOrderInfo)
       .catch((err) => {
@@ -47,7 +53,7 @@ export default function PaymentPage() {
     if (!paymentForm.phone) return alert("Vui lòng nhập SĐT");
     try {
       const res = await fetch(
-        `http://localhost:3000/api/reception/customer?phone=${paymentForm.phone}`,
+        `${API_BASE}/api/reception/customer?phone=${paymentForm.phone}`,
         {
           headers: getHeaders(),
         }
@@ -72,17 +78,46 @@ export default function PaymentPage() {
     }
   };
 
-  // 3. TÍNH TOÁN TIỀN
+  // 3. CÁC HÀM TÍNH SỐ TIỀN
+  const getBaseOrderAmount = () => {
+    if (!orderInfo) return 0;
+
+    const itemSum = orderInfo.items?.reduce(
+      (sum, item) => sum + (Number(item.total) || 0),
+      0
+    );
+
+    const baseAmount = Number(orderInfo.total_amount);
+    return Number.isFinite(baseAmount) ? baseAmount : itemSum;
+  };
+
+  const getValidatedDiscountPercent = () => {
+    const percent = parseFloat(paymentForm.discountPercent);
+    return Number.isFinite(percent) ? percent : 0;
+  };
+
+  const getValidatedUsePoints = () => {
+    const points = parseInt(paymentForm.usePoints, 10) || 0;
+    const available = paymentForm.availablePoints || 0;
+    return Math.max(0, Math.min(points, available));
+  };
+
   const calculateFinal = () => {
     if (!orderInfo) return 0;
-    const total = orderInfo.total_amount;
-    const discountPoint = (parseInt(paymentForm.usePoints) || 0) * 1000;
+    const total = getBaseOrderAmount();
+    const discountPoint = getValidatedUsePoints() * 1000;
     const discountVoucher = parseInt(paymentForm.voucherAmount) || 0;
-    const discountPercent =
-      (total * (parseFloat(paymentForm.discountPercent) || 0)) / 100;
+    const discountPercent = (total * getValidatedDiscountPercent()) / 100;
 
     let final = total - discountPoint - discountVoucher - discountPercent;
     return final < 0 ? 0 : final;
+  };
+
+  const getDisplayInvoiceTotal = () => {
+    const invoiceTotal = Number(orderInfo.invoice_total);
+    return Number.isFinite(invoiceTotal)
+      ? invoiceTotal
+      : calculateFinal();
   };
 
   // 4. SUBMIT THANH TOÁN
@@ -94,13 +129,13 @@ export default function PaymentPage() {
       receptionist_id: JSON.parse(sessionStorage.getItem("user"))?.id,
       payment_method: paymentForm.paymentMethod,
       phone: paymentForm.phone || null,
-      use_points: parseInt(paymentForm.usePoints) || 0,
+      use_points: getValidatedUsePoints(),
       voucher_amount: parseInt(paymentForm.voucherAmount) || 0,
       discount_percent: parseFloat(paymentForm.discountPercent) || 0,
     };
 
     try {
-      const res = await fetch("http://localhost:3000/api/reception/pay", {
+      const res = await fetch(`${API_BASE}/api/reception/pay`, {
         method: "POST",
         headers: getHeaders(),
         body: JSON.stringify(payload),
@@ -133,7 +168,7 @@ export default function PaymentPage() {
   return (
     <DashboardLayout>
       <div style={{ display: "flex", gap: "20px", height: "85vh" }}>
-        <div style={styles.billSection}>
+        <div style={styles.billSection} className="receipt-print-area">
           <div
             style={{
               textAlign: "center",
@@ -142,16 +177,42 @@ export default function PaymentPage() {
               marginBottom: "15px",
             }}
           >
-            <h2 style={{ margin: "0 0 5px 0" }}>HÓA ĐƠN THANH TOÁN</h2>
-            {/* Hiển thị thông tin lấy từ API */}
-            <div style={{ fontSize: "18px", fontWeight: "bold" }}>
-              Mã đơn: #{orderInfo.order_id}
+            <div style={{ fontSize: "18px", fontWeight: "bold", letterSpacing: "1px" }}>
+              NHÀ HÀNG CON TÔM
             </div>
-            <div style={{ color: "#333" }}>
-              Vị trí: Bàn {orderInfo.table_id}
+            <div style={{ fontSize: "12px", color: "#555", marginTop: "4px" }}>
+              Đ/C: 218 Lý Thường Kiệt, Phường 15, Quận 11, TP.HCM
             </div>
-            <div style={{ color: "#666", fontSize: "13px" }}>
+            <div style={{ fontSize: "12px", color: "#555", marginTop: "2px" }}>
+              Tel: 1800 BK88 - Hot: 1800 88BK
+            </div>
+            <div style={{ marginTop: "12px", fontSize: "16px", fontWeight: "bold" }}>
+              PHIẾU TẠM TÍNH
+            </div>
+            <div style={{ display: "flex", justifyContent: "center", gap: "10px", flexWrap: "wrap", alignItems: "center", marginTop: "10px" }}>
+              <div style={{ fontSize: "15px", fontWeight: "bold" }}>
+                {orderInfo.invoice_id ? `HĐ #${orderInfo.invoice_id}` : `Đơn #${orderInfo.order_id}`}
+              </div>
+              <button onClick={() => window.print()} style={styles.printBtn} className="no-print">
+                In hóa đơn
+              </button>
+            </div>
+            <div style={{ color: "#333", marginTop: "10px" }}>
+              Khu vực: Bàn {orderInfo.table_id}
+            </div>
+            <div style={{ color: "#666", fontSize: "13px", marginTop: "4px" }}>
               Giờ vào: {new Date(orderInfo.order_time).toLocaleString("vi-VN")}
+            </div>
+            {orderInfo.invoice_time && (
+              <div style={{ color: "#666", fontSize: "13px", marginTop: "4px" }}>
+                Xuất hoá đơn: {new Date(orderInfo.invoice_time).toLocaleString("vi-VN")}
+              </div>
+            )}
+            <div style={{ color: "#666", fontSize: "13px", marginTop: "4px" }}>
+              Trạng thái: {orderInfo.payment_status}
+            </div>
+            <div style={{ color: "#333", fontSize: "13px", marginTop: "6px" }}>
+              Tạm tính: {fmtMoney(getBaseOrderAmount())}
             </div>
           </div>
 
@@ -193,6 +254,18 @@ export default function PaymentPage() {
                 {fmtMoney(orderInfo.total_amount)}
               </strong>
             </div>
+            <div style={styles.rowSummary}>
+              <span>Thuế:</span>
+              <strong>{fmtMoney(orderInfo.tax_amount || 0)}</strong>
+            </div>
+            <div style={styles.rowSummary}>
+              <span>Giảm giá:</span>
+              <strong>{fmtMoney(orderInfo.discount_amount || 0)}</strong>
+            </div>
+            <div style={{ ...styles.rowSummary, marginTop: "10px", fontSize: "18px", fontWeight: "bold" }}>
+              <span>Thanh toán dự kiến:</span>
+              <strong>{fmtMoney(getDisplayInvoiceTotal())}</strong>
+            </div>
           </div>
         </div>
 
@@ -228,14 +301,22 @@ export default function PaymentPage() {
 
           {/* 2. GIẢM GIÁ */}
           <div style={styles.group}>
-            <label style={styles.label}>Sử dụng điểm (1đ = 1.000đ)</label>
+            <label style={styles.label}>
+              Sử dụng điểm (1đ = 1.000đ, tối đa {paymentForm.availablePoints} điểm)
+            </label>
             <input
               type="number"
               style={styles.input}
               value={paymentForm.usePoints}
-              onChange={(e) =>
-                setPaymentForm({ ...paymentForm, usePoints: e.target.value })
-              }
+              min={0}
+              max={paymentForm.availablePoints || 0}
+              onChange={(e) => {
+                const value = parseInt(e.target.value, 10);
+                const sanitized = Number.isFinite(value)
+                  ? Math.max(0, Math.min(value, paymentForm.availablePoints || 0))
+                  : 0;
+                setPaymentForm({ ...paymentForm, usePoints: sanitized });
+              }}
               disabled={!paymentForm.customerName}
             />
           </div>
@@ -374,6 +455,16 @@ const styles = {
     border: "1px solid #ccc",
     borderRadius: "6px",
     cursor: "pointer",
+  },
+  printBtn: {
+    padding: "10px 16px",
+    background: "#ff9800",
+    color: "white",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    boxShadow: "0 4px 12px rgba(255,152,0,0.2)",
+    fontWeight: "bold",
   },
   memberInfo: {
     marginTop: "5px",

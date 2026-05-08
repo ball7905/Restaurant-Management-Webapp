@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 
 export default function ManagerHome() {
+  const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
   const [stats, setStats] = useState({
     revenueToday: 0,
     ordersToday: 0,
@@ -15,7 +17,7 @@ export default function ManagerHome() {
   useEffect(() => {
     async function loadStats() {
       try {
-        const res = await fetch("http://localhost:3000/api/manager/stats", {
+        const res = await fetch(`${API_BASE}/api/manager/stats`, {
           headers: {
             Authorization: "Bearer " + sessionStorage.getItem("token"),
           },
@@ -36,7 +38,7 @@ export default function ManagerHome() {
     }
 
     loadStats();
-  }, []);
+  }, [API_BASE]);
 
   return (
     <DashboardLayout>

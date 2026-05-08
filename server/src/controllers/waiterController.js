@@ -1,5 +1,6 @@
 import sql from "mssql";
 import { pool, poolConnect } from "../db.js";
+import redisClient from "../config/redisClient.js";
 
 /* ---------------- GET DATA ---------------- */
 
@@ -28,7 +29,7 @@ export async function getActiveOrders(req, res) {
           SELECT TOP 1 DB.SDT_Khach 
           FROM DATBAN DB 
           WHERE DB.ID_Ban = D.ID_Ban AND DB.TrangThai = N'Đã nhận bàn'
-          ORDER BY DB.ThoiGianDat DESC
+          ORDER BY ABS(DATEDIFF(SECOND, DB.ThoiGianDat, DATEADD(HOUR, 7, D.ThoiGianTao))), DB.ID_DatBan DESC
         ) BookingInfo
         LEFT JOIN KHACHHANG K ON BookingInfo.SDT_Khach = K.SDT
         WHERE D.TrangThai = N'Đang phục vụ' 
@@ -71,13 +72,32 @@ export async function getActiveOrders(req, res) {
 
 // Lấy Menu đang kinh doanh
 export async function getMenu(req, res) {
+  const cacheKey = 'menu:all';
+
   try {
+    const forceRefresh = req.query.refresh === "true";
+
+    if (!forceRefresh) {
+      const cachedData = await redisClient.get(cacheKey);
+      if (cachedData) {
+        return res.json(JSON.parse(cachedData));
+      }
+    }
+
     await poolConnect;
     const result = await pool.request().query(`
-      SELECT ID as id, Ten as name, DonGia as price, PhanLoai as category 
+      SELECT ID as id,
+             Ten as name,
+             DonGia as price,
+             PhanLoai as category,
+             ISNULL(ImageURL, '') as imageURL
       FROM MONAN 
       WHERE DangKinhDoanh = 1 AND DangPhucVu = 1
     `);
+
+    // Cache the menu for 1 hour
+    await redisClient.setEx(cacheKey, 3600, JSON.stringify(result.recordset));
+
     res.json(result.recordset);
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -106,7 +106,7 @@ export default function App() {
         }
       />
       <Route
-        path="/reception/payment/:tableId"
+        path="/reception/payment/:orderId"
         element={
           <ProtectedRoute roles={["Lễ tân"]}>
             <PaymentPage />
